@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>DeskPet</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            -webkit-app-region: drag;
+            /* 添加拖动区域 */
+        }
+
+        .pet-container {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            -webkit-app-region: no-drag;
+            /* 点击区域不拖动 */
+            position: fixed;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 80px;
+            height: 80px;
+            /* 初始位置在右下角 */
+            right: 20px;
+            bottom: 20px;
+        }
+
+        .pet-container:hover {
+            transform: scale(1.1);
+        }
+
+        .pet-container:active {
+            transform: scale(0.95);
+        }
+
+        .pet-image {
+            width: 80px;
+            height: 80px;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+            border-radius: 50%;
+            object-fit: cover;
+            pointer-events: none;
+            /* 确保点击事件传递给父容器 */
+            user-select: none;
+            /* 防止图片被选中 */
+        }
+
+
+
+        /* 拖拽提示 */
+        .pet-container::after {
+            content: '↕';
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            font-size: 12px;
+            color: #999;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        /* 吸附动画 - 暂时注释掉 */
+        /*
+        @keyframes snap-bounce {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.2);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes snap-scale {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        /* 返回动画 */
+        @keyframes return-walk {
+            0% {
+                transform: scale(1) translateX(0);
+            }
+
+            25% {
+                transform: scale(1.1) translateX(-5px);
+            }
+
+            50% {
+                transform: scale(1) translateX(0);
+            }
+
+            75% {
+                transform: scale(1.1) translateX(5px);
+            }
+
+            100% {
+                transform: scale(1) translateX(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="pet-container" id="pet">
+        <img class="pet-image" id="petImage" src="../assets/imgs/罗小黑的生活/pet.gif" alt="桌宠" />
+    </div>
+
+
+
+    <script>
+        const pet = document.getElementById('pet');
+        const petImage = document.getElementById('petImage');
+
+        // 表情映射表
+        const emotionMap = {
+            '好棒': '../assets/imgs/罗小黑的生活/好棒.gif',
+            '嘿嘿被夸了': '../assets/imgs/罗小黑的生活/嘿嘿被夸了.gif',
+            '给你花花': '../assets/imgs/罗小黑的生活/给你花花.gif',
+            '有瓜让我听听': '../assets/imgs/罗小黑的生活/有瓜让我听听.gif',
+            '猫头偷看': '../assets/imgs/罗小黑的生活/猫头偷看.gif',
+            '思考并怀疑': '../assets/imgs/罗小黑的生活/思考并怀疑.gif',
+            '好复杂': '../assets/imgs/罗小黑的生活/好复杂.gif',
+            '馋得流口水': '../assets/imgs/罗小黑的生活/馋得流口水.gif',
+            '生气替你出头': '../assets/imgs/罗小黑的生活/生气替你出头.gif',
+            '哼不理你了': '../assets/imgs/罗小黑的生活/哼不理你了.gif',
+            '玩手机': '../assets/imgs/罗小黑的生活/玩手机.gif',
+            '困死了': '../assets/imgs/罗小黑的生活/困死了.gif'
+        };
+
+        // 根据时间切换默认表情
+        function updateDefaultEmotion() {
+            const now = new Date();
+            const hour = now.getHours();
+
+            if (hour >= 18) { // 晚上6点后
+                petImage.src = '../assets/imgs/罗小黑的生活/困死了.gif';
+                console.log('晚上时间，切换到困死了.gif');
+            } else {
+                petImage.src = '../assets/imgs/罗小黑的生活/pet.gif';
+                console.log('白天时间，使用默认pet.gif');
+            }
+        }
+
+        // 切换表情函数
+        function changeEmotion(emotion) {
+            if (emotionMap[emotion]) {
+                petImage.src = emotionMap[emotion];
+                console.log('切换到表情:', emotion);
+            } else {
+                console.log('未知表情:', emotion);
+            }
+        }
+
+        // 初始化时设置默认表情
+        updateDefaultEmotion();
+
+        // 右键菜单功能
+        let contextMenuTimeout = null;
+        pet.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // 防抖：清除之前的超时
+            if (contextMenuTimeout) {
+                clearTimeout(contextMenuTimeout);
+            }
+
+            // 延迟发送，避免快速连续点击
+            contextMenuTimeout = setTimeout(() => {
+                try {
+                    console.log('Sending context menu request');
+                    require('electron').ipcRenderer.send('show-context-menu', e.screenX, e.screenY);
+                } catch (error) {
+                    console.error('Error showing context menu:', error);
+                }
+            }, 50);
+        });
+
+        // 拖拽相关变量
+        let isMouseDown = false;
+        let isDragActive = false;
+        let startScreenX = 0, startScreenY = 0;
+        let clickOffsetX = 0, clickOffsetY = 0;
+        const DRAG_DEAD_ZONE = 5; // 移动超过5px才算拖拽
+
+        pet.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+
+            isMouseDown = true;
+            isDragActive = false;
+            startScreenX = e.screenX;
+            startScreenY = e.screenY;
+            clickOffsetX = e.clientX;
+            clickOffsetY = e.clientY;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isMouseDown) return;
+
+            const dx = e.screenX - startScreenX;
+            const dy = e.screenY - startScreenY;
+
+            if (!isDragActive && (Math.abs(dx) > DRAG_DEAD_ZONE || Math.abs(dy) > DRAG_DEAD_ZONE)) {
+                isDragActive = true;
+                pet.style.cursor = 'grabbing';
+                try {
+                    require('electron').ipcRenderer.send('drag-start', {
+                        offsetX: clickOffsetX,
+                        offsetY: clickOffsetY
+                    });
+                } catch (error) {
+                    console.error('drag-start failed:', error);
+                }
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!isMouseDown) return;
+            isMouseDown = false;
+
+            if (isDragActive) {
+                isDragActive = false;
+                pet.style.cursor = 'pointer';
+                try {
+                    require('electron').ipcRenderer.send('drag-end');
+                } catch (error) {
+                    console.error('drag-end failed:', error);
+                }
+            } else {
+                try {
+                    require('electron').ipcRenderer.send('pet-clicked');
+                } catch (error) {
+                    console.error('pet-clicked failed:', error);
+                }
+            }
+        });
+
+        pet.addEventListener('selectstart', (e) => e.preventDefault());
+
+        // 监听窗口位置更新（保留用于其他功能）
+        const { ipcRenderer } = require('electron');
+        ipcRenderer.on('pet-window-position', (event, x, y) => {
+            // 保留此监听器用于其他功能，但不再用于拖动
+        });
+
+        // 监听边缘吸附完成事件 - 暂时注释掉
+        /*
+        ipcRenderer.on('snap-completed', (event, x, y, snapType, shouldFlip) => {
+            console.log('边缘吸附完成:', x, y, snapType, shouldFlip);
+
+            // 处理翻转
+            if (shouldFlip) {
+                isFlipped = true;
+                pet.style.transform = 'scaleY(-1)';
+                console.log('宠物已翻转（吸附到顶部）');
+            } else {
+                isFlipped = false;
+            }
+
+            // 添加吸附完成的视觉反馈和动画
+            pet.style.transform = shouldFlip ? 'scale(1.1) scaleY(-1)' : 'scale(1.1)';
+            pet.style.transition = 'transform 0.2s ease-out';
+
+            // 吸附动画效果 - 只进行屏幕边缘吸附
+            pet.style.animation = 'snap-scale 0.4s ease-out';
+
+            setTimeout(() => {
+                pet.style.transform = shouldFlip ? 'scale(1) scaleY(-1)' : 'scale(1)';
+                pet.style.transition = 'transform 0.1s ease-in';
+                pet.style.animation = '';
+            }, 200);
+        });
+        */
+
+        // 监听返回原位置事件 - 暂时注释掉
+        /*
+        ipcRenderer.on('return-to-original', (event) => {
+            console.log('开始返回原位置');
+
+            // 重置翻转状态
+            if (isFlipped) {
+                isFlipped = false;
+                pet.style.transform = 'scale(1)';
+            }
+
+            // 添加返回动画效果
+            pet.style.animation = 'return-walk 1s ease-in-out';
+        });
+
+        // 监听返回完成事件
+        ipcRenderer.on('return-completed', (event) => {
+            console.log('返回原位置完成');
+
+            // 清除动画
+            pet.style.animation = '';
+        });
+        */
+
+
+
+
+
+        // 监听表情切换事件
+        try {
+            require('electron').ipcRenderer.on('change-emotion', (event, emotion) => {
+                changeEmotion(emotion);
+            });
+        } catch (error) {
+            console.error('Error setting up emotion listener:', error);
+        }
+
+        // 监听状态复原事件
+        try {
+            require('electron').ipcRenderer.on('reset-emotion', (event) => {
+                console.log('收到状态复原信号，恢复初始状态');
+                updateDefaultEmotion();
+            });
+        } catch (error) {
+            console.error('Error setting up reset emotion listener:', error);
+        }
+
+        console.log('Pet with drag and emotion support loaded');
+    </script>
+</body>
+
+</html>

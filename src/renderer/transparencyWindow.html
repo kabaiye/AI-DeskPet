@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Transparency Control</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            -webkit-app-region: no-drag;
+        }
+
+        .transparency-panel {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            padding: 16px;
+            width: 140px;
+            -webkit-app-region: no-drag;
+        }
+
+        .transparency-label {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 12px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .transparency-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            margin-bottom: 12px;
+        }
+
+        .transparency-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4a6cf7;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .transparency-slider::-webkit-slider-track {
+            background: #ddd;
+            border-radius: 3px;
+        }
+
+        .transparency-value {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        /* 淡出动画 */
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            to {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+        }
+
+        .fade-out {
+            animation: fadeOut 0.3s ease-in forwards;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="transparency-panel" id="transparencyPanel">
+        <div class="transparency-label">透明度调节</div>
+        <input type="range" class="transparency-slider" id="transparencySlider" min="20" max="100" value="100">
+        <div class="transparency-value" id="transparencyValue">100%</div>
+    </div>
+
+    <script>
+        try {
+            const { ipcRenderer } = require('electron');
+            const transparencyPanel = document.getElementById('transparencyPanel');
+            const transparencySlider = document.getElementById('transparencySlider');
+            const transparencyValue = document.getElementById('transparencyValue');
+
+            console.log('Transparency window script loaded successfully');
+
+            // 鼠标悬停时暂停自动关闭功能
+            let autoCloseTimer;
+            let isMouseHovering = false;
+
+            const startAutoClose = () => {
+                if (autoCloseTimer) {
+                    clearTimeout(autoCloseTimer);
+                }
+                autoCloseTimer = setTimeout(() => {
+                    if (transparencyPanel && !isMouseHovering) {
+                        transparencyPanel.classList.add('fade-out');
+                        // 通知右键菜单透明度窗口已关闭
+                        try {
+                            ipcRenderer.send('transparency-window-status', false);
+                            ipcRenderer.send('transparency-window-closed');
+                        } catch (error) {
+                            console.error('Error notifying transparency window status:', error);
+                        }
+                    }
+                }, 4500);
+            };
+
+            // 接收当前透明度值
+            ipcRenderer.on('current-pet-transparency', (event, transparency) => {
+                console.log('Received current pet transparency:', transparency);
+                transparencySlider.value = transparency;
+                transparencyValue.textContent = transparency + '%';
+            });
+
+            // 通知右键菜单透明度窗口已打开
+            try {
+                ipcRenderer.send('transparency-window-opened');
+            } catch (error) {
+                console.error('Error notifying transparency window opened:', error);
+            }
+
+            // 自动关闭功能（4.5秒后开始淡出，5秒后关闭）
+            startAutoClose();
+
+            // 透明度调节
+            transparencySlider.addEventListener('input', (e) => {
+                const value = e.target.value;
+                transparencyValue.textContent = value + '%';
+
+                // 发送透明度值到主进程
+                try {
+                    ipcRenderer.send('set-pet-transparency', parseInt(value));
+                } catch (error) {
+                    console.error('Error setting transparency:', error);
+                }
+            });
+
+            // 点击其他地方关闭窗口
+            document.addEventListener('click', (e) => {
+                if (e.target === document.body || !e.target.closest('.transparency-panel')) {
+                    console.log('Click outside transparency panel, closing...');
+                    // 通知右键菜单透明度窗口已关闭
+                    try {
+                        ipcRenderer.send('transparency-window-status', false);
+                        ipcRenderer.send('transparency-window-closed');
+                    } catch (error) {
+                        console.error('Error notifying transparency window status:', error);
+                    }
+                    window.close();
+                }
+            });
+
+            // 监听窗口失去焦点时关闭
+            window.addEventListener('blur', () => {
+                console.log('Transparency window lost focus, closing...');
+                // 通知右键菜单透明度窗口已关闭
+                try {
+                    ipcRenderer.send('transparency-window-status', false);
+                    ipcRenderer.send('transparency-window-closed');
+                } catch (error) {
+                    console.error('Error notifying transparency window status:', error);
+                }
+                window.close();
+            });
+
+            // ESC键关闭
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    // 通知右键菜单透明度窗口已关闭
+                    try {
+                        ipcRenderer.send('transparency-window-status', false);
+                        ipcRenderer.send('transparency-window-closed');
+                    } catch (error) {
+                        console.error('Error notifying transparency window status:', error);
+                    }
+                    window.close();
+                }
+            });
+
+            // 窗口关闭时通知主进程
+            window.addEventListener('beforeunload', () => {
+                try {
+                    ipcRenderer.send('transparency-window-closed');
+                    // 通知右键菜单透明度窗口已关闭
+                    ipcRenderer.send('transparency-window-status', false);
+                } catch (error) {
+                    console.error('Error notifying transparency window close:', error);
+                }
+            });
+
+            // 监听鼠标进入和离开
+            transparencyPanel.addEventListener('mouseenter', () => {
+                isMouseHovering = true;
+                if (transparencyPanel.classList.contains('fade-out')) {
+                    transparencyPanel.classList.remove('fade-out');
+                }
+                // 鼠标悬停时清除自动关闭计时器
+                if (autoCloseTimer) {
+                    clearTimeout(autoCloseTimer);
+                    autoCloseTimer = null;
+                }
+            });
+
+            transparencyPanel.addEventListener('mouseleave', () => {
+                isMouseHovering = false;
+                // 鼠标离开时重新开始自动关闭计时器
+                startAutoClose();
+            });
+
+            console.log('Transparency window event listeners added successfully');
+        } catch (error) {
+            console.error('Error in transparency window script:', error);
+        }
+    </script>
+</body>
+
+</html>

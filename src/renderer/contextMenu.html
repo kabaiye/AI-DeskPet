@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Context Menu</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            -webkit-app-region: no-drag;
+        }
+
+        .context-menu {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            padding: 8px 0;
+            min-width: 180px;
+            max-height: 80vh;
+            overflow-y: auto;
+            -webkit-app-region: no-drag;
+        }
+
+        .transparency-control {
+            position: relative;
+        }
+
+        .transparency-control.expanded {
+            background-color: #f5f5f5;
+        }
+
+        .context-menu-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #333;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            -webkit-app-region: no-drag;
+        }
+
+        .context-menu-item:hover {
+            background-color: #f5f5f5;
+        }
+
+        .context-menu-item.danger {
+            color: #e74c3c;
+        }
+
+        .context-menu-item.danger:hover {
+            background-color: #fdf2f2;
+        }
+
+        .context-menu-separator {
+            height: 1px;
+            background-color: #eee;
+            margin: 4px 0;
+        }
+
+        /* 淡出动画 */
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            to {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+        }
+
+        .fade-out {
+            animation: fadeOut 0.3s ease-in forwards;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" id="openChatWindow">
+            <span>💬</span>
+            <span>和小黑聊天</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="openMainWindow">
+            <span>🏠</span>
+            <span>打开主页面</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="openTodoWindow">
+            <span>📝</span>
+            <span>待办事项</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="openShortcutSettings">
+            <span>⚡</span>
+            <span>快捷键设置</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="openPetSettings">
+            <span>🐱</span>
+            <span>桌宠设置</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item transparency-control" id="transparencyControl">
+            <span>🎨</span>
+            <span>透明度调节</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item danger" id="exitApp">
+            <span>🚪</span>
+            <span>退出应用</span>
+        </div>
+    </div>
+
+    <script>
+        try {
+            const { ipcRenderer } = require('electron');
+            const openMainWindow = document.getElementById('openMainWindow');
+            const openMapWindow = document.getElementById('openMapWindow');
+            const openTodoWindow = document.getElementById('openTodoWindow');
+            const openShortcutSettings = document.getElementById('openShortcutSettings');
+            const openPetSettings = document.getElementById('openPetSettings');
+            const exitApp = document.getElementById('exitApp');
+            const contextMenu = document.getElementById('contextMenu');
+            const transparencyControl = document.getElementById('transparencyControl');
+
+            console.log('Context menu window script loaded successfully');
+
+            // 自动关闭功能（4.5秒后开始淡出，5秒后关闭）
+            // 但是如果有展开的透明度控制或透明度窗口打开，则不自动关闭
+            setTimeout(() => {
+                const isTransparencyExpanded = transparencyControl.classList.contains('expanded');
+                if (!isTransparencyExpanded && !isTransparencyWindowOpen && contextMenu) {
+                    contextMenu.classList.add('fade-out');
+                } else {
+                    console.log('Keeping context menu open (transparency control active)');
+                }
+            }, 4500);
+
+            // 监听透明度窗口状态变化
+            let isTransparencyWindowOpen = false;
+
+            // 监听来自透明度窗口的状态更新
+            try {
+                ipcRenderer.on('transparency-window-status', (event, isOpen) => {
+                    isTransparencyWindowOpen = isOpen;
+                    console.log('Transparency window status updated:', isOpen);
+                });
+            } catch (error) {
+                console.error('Error setting up transparency window status listener:', error);
+            }
+
+            // 打开聊天窗口
+            const openChatWindow = document.getElementById('openChatWindow');
+            openChatWindow.addEventListener('click', () => {
+                console.log('Opening chat window from context menu');
+                try {
+                    ipcRenderer.send('open-chat-window');
+                    window.close();
+                } catch (error) {
+                    console.error('Error opening chat window:', error);
+                }
+            });
+
+            // 打开主页面
+            openMainWindow.addEventListener('click', () => {
+                console.log('Opening main window from context menu');
+                try {
+                    ipcRenderer.send('open-main-window');
+                    window.close();
+                } catch (error) {
+                    console.error('Error opening main window:', error);
+                }
+            });
+
+            // 打开待办窗口
+            openTodoWindow.addEventListener('click', () => {
+                console.log('Opening todo window from context menu');
+                try {
+                    ipcRenderer.send('open-todo-window');
+                    window.close();
+                } catch (error) {
+                    console.error('Error opening todo window:', error);
+                }
+            });
+
+            // 打开快捷键设置窗口
+            openShortcutSettings.addEventListener('click', () => {
+                console.log('Opening shortcut settings from context menu');
+                try {
+                    ipcRenderer.send('open-shortcut-settings');
+                    window.close();
+                } catch (error) {
+                    console.error('Error opening shortcut settings:', error);
+                }
+            });
+
+            // 打开桌宠设置窗口
+            openPetSettings.addEventListener('click', () => {
+                console.log('Opening pet settings from context menu');
+                try {
+                    ipcRenderer.send('open-pet-settings');
+                    window.close();
+                } catch (error) {
+                    console.error('Error opening pet settings:', error);
+                }
+            });
+
+            // 透明度控制面板展开/收起
+            transparencyControl.addEventListener('click', (e) => {
+                e.stopPropagation(); // 阻止事件冒泡
+                const isExpanded = transparencyControl.classList.contains('expanded');
+
+                if (isExpanded) {
+                    transparencyControl.classList.remove('expanded');
+                    isTransparencyWindowOpen = false;
+                    // 关闭透明度窗口
+                    try {
+                        ipcRenderer.send('close-transparency-window');
+                    } catch (error) {
+                        console.error('Error closing transparency window:', error);
+                    }
+                } else {
+                    transparencyControl.classList.add('expanded');
+                    isTransparencyWindowOpen = true;
+                    // 打开透明度窗口
+                    try {
+                        ipcRenderer.send('open-transparency-window');
+                    } catch (error) {
+                        console.error('Error opening transparency window:', error);
+                    }
+                }
+            });
+
+            // 退出应用
+            exitApp.addEventListener('click', () => {
+                console.log('Exiting app from context menu');
+                try {
+                    ipcRenderer.send('exit-app');
+                    window.close();
+                } catch (error) {
+                    console.error('Error exiting app:', error);
+                }
+            });
+
+            // 点击其他地方关闭菜单
+            document.addEventListener('click', (e) => {
+                // 如果点击的是body（背景）或者不是菜单项，则关闭菜单
+                // 但是如果有展开的透明度控制或透明度窗口打开，则不关闭
+                if (e.target === document.body || !e.target.closest('.context-menu-item')) {
+                    const isTransparencyExpanded = transparencyControl.classList.contains('expanded');
+                    if (!isTransparencyExpanded && !isTransparencyWindowOpen) {
+                        console.log('Click outside menu, closing...');
+                        window.close();
+                    } else {
+                        console.log('Transparency control is active, keeping menu open');
+                    }
+                }
+            });
+
+            // 监听窗口失去焦点时关闭
+            window.addEventListener('blur', () => {
+                // 如果有透明度窗口打开，不关闭右键菜单
+                if (!isTransparencyWindowOpen) {
+                    console.log('Window lost focus, closing...');
+                    window.close();
+                } else {
+                    console.log('Window lost focus but transparency window is open, keeping menu open');
+                }
+            });
+
+            // ESC键关闭
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    // 如果有透明度窗口打开，先关闭透明度窗口
+                    if (isTransparencyWindowOpen) {
+                        try {
+                            ipcRenderer.send('close-transparency-window');
+                            transparencyControl.classList.remove('expanded');
+                            isTransparencyWindowOpen = false;
+                        } catch (error) {
+                            console.error('Error closing transparency window on ESC:', error);
+                        }
+                    } else {
+                        window.close();
+                    }
+                }
+            });
+
+            // 窗口关闭时通知主进程清理全局变量
+            window.addEventListener('beforeunload', () => {
+                try {
+                    ipcRenderer.send('context-menu-closed');
+                } catch (error) {
+                    console.error('Error notifying context menu close:', error);
+                }
+            });
+
+            // 鼠标悬停时重置自动关闭计时器
+            let autoCloseTimer;
+            const resetAutoClose = () => {
+                if (autoCloseTimer) {
+                    clearTimeout(autoCloseTimer);
+                }
+                autoCloseTimer = setTimeout(() => {
+                    const isTransparencyExpanded = transparencyControl.classList.contains('expanded');
+                    if (!isTransparencyExpanded && !isTransparencyWindowOpen && contextMenu) {
+                        contextMenu.classList.add('fade-out');
+                    }
+                }, 4500);
+            };
+
+            // 监听鼠标进入和离开
+            contextMenu.addEventListener('mouseenter', () => {
+                if (contextMenu.classList.contains('fade-out')) {
+                    contextMenu.classList.remove('fade-out');
+                }
+                resetAutoClose();
+            });
+
+            contextMenu.addEventListener('mouseleave', () => {
+                resetAutoClose();
+            });
+
+            console.log('Context menu event listeners added successfully');
+        } catch (error) {
+            console.error('Error in context menu window script:', error);
+        }
+    </script>
+</body>
+
+</html>

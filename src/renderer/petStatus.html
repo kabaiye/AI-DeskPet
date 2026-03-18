@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Pet Status</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            /* 确保完全透明，不显示任何背景 */
+            -webkit-app-region: no-drag;
+            user-select: none;
+        }
+
+        .status-popup {
+            background: #2c3e50;
+            border-radius: 18px;
+            padding: 12px 16px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+            border: none;
+            width: 180px;
+            text-align: center;
+            animation: fadeIn 0.3s ease-out;
+            position: relative;
+            color: white;
+        }
+
+        /* 消息气泡的尾巴 */
+        .status-popup::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border: 8px solid transparent;
+            border-top-color: #2c3e50;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* 当气泡在桌宠下方时的尾巴 */
+        .status-popup.bubble-bottom::after {
+            border-top-color: transparent;
+            border-bottom-color: #2c3e50;
+            top: auto;
+            bottom: 100%;
+        }
+
+        /* 当气泡在桌宠左侧时的尾巴 */
+        .status-popup.bubble-left::after {
+            border-top-color: transparent;
+            border-left-color: #2c3e50;
+            top: 50%;
+            left: 100%;
+            transform: translateY(-50%);
+        }
+
+        /* 当气泡在桌宠右侧时的尾巴 */
+        .status-popup.bubble-right::after {
+            border-top-color: transparent;
+            border-right-color: #2c3e50;
+            top: 50%;
+            left: auto;
+            right: 100%;
+            transform: translateY(-50%);
+        }
+
+        .status-message {
+            font-size: 13px;
+            color: #ecf0f1;
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+
+            to {
+                opacity: 0;
+                transform: translateY(-10px) scale(0.95);
+            }
+        }
+
+        .fade-out {
+            animation: fadeOut 0.3s ease-in forwards;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="status-popup" id="statusPopup">
+        <div class="status-message" id="statusMessage">今天也要开开心心的哦！✨</div>
+    </div>
+
+    <script>
+        try {
+            const { ipcRenderer } = require('electron');
+            const statusMessage = document.getElementById('statusMessage');
+            const statusPopup = document.getElementById('statusPopup');
+
+            console.log('Pet status window script loaded successfully');
+
+            // 自动关闭相关变量
+            let autoCloseTimer = null;
+            let isMouseOver = false;
+            const AUTO_CLOSE_DELAY = 5000; // 5秒后自动关闭
+
+            // 监听主进程发送的状态消息
+            ipcRenderer.on('update-status-message', (event, message) => {
+                console.log('Received status message:', message);
+                if (statusMessage) {
+                    statusMessage.textContent = message;
+                }
+            });
+
+            // 监听主进程发送的气泡方向
+            ipcRenderer.on('set-bubble-direction', (event, direction) => {
+                console.log('Received bubble direction:', direction);
+                if (statusPopup) {
+                    // 移除所有方向类
+                    statusPopup.classList.remove('bubble-bottom', 'bubble-left', 'bubble-right');
+
+                    // 添加对应的方向类
+                    if (direction === 'bottom') {
+                        statusPopup.classList.add('bubble-bottom');
+                    } else if (direction === 'left') {
+                        statusPopup.classList.add('bubble-left');
+                    } else if (direction === 'right') {
+                        statusPopup.classList.add('bubble-right');
+                    }
+                    // 默认是上方，不需要添加类
+                }
+            });
+
+            // 开始自动关闭计时器
+            function startAutoCloseTimer() {
+                if (autoCloseTimer) {
+                    clearTimeout(autoCloseTimer);
+                }
+                autoCloseTimer = setTimeout(() => {
+                    if (!isMouseOver) {
+                        console.log('Auto-closing pet status window');
+                        if (statusPopup) {
+                            statusPopup.classList.add('fade-out');
+                        }
+                        setTimeout(() => {
+                            window.close();
+                        }, 300);
+                    }
+                }, AUTO_CLOSE_DELAY);
+            }
+
+            // 重置自动关闭计时器
+            function resetAutoCloseTimer() {
+                if (autoCloseTimer) {
+                    clearTimeout(autoCloseTimer);
+                }
+                if (!isMouseOver) {
+                    startAutoCloseTimer();
+                }
+            }
+
+            // 鼠标进入窗口
+            document.addEventListener('mouseenter', () => {
+                console.log('Mouse entered pet status window');
+                isMouseOver = true;
+                if (autoCloseTimer) {
+                    clearTimeout(autoCloseTimer);
+                }
+            });
+
+            // 鼠标离开窗口
+            document.addEventListener('mouseleave', () => {
+                console.log('Mouse left pet status window');
+                isMouseOver = false;
+                startAutoCloseTimer();
+            });
+
+            // 点击窗口关闭
+            document.addEventListener('click', () => {
+                console.log('Window clicked, closing...');
+                window.close();
+            });
+
+            // ESC键关闭
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    console.log('ESC pressed, closing...');
+                    window.close();
+                }
+            });
+
+            // 窗口失去焦点时关闭
+            window.addEventListener('blur', () => {
+                console.log('Window lost focus, closing...');
+                window.close();
+            });
+
+            // 开始自动关闭计时器
+            startAutoCloseTimer();
+
+            console.log('Event listeners added successfully');
+        } catch (error) {
+            console.error('Error in pet status window script:', error);
+            // 如果出错，显示默认消息
+            const statusMessage = document.getElementById('statusMessage');
+            if (statusMessage) {
+                statusMessage.textContent = '喵～';
+            }
+        }
+    </script>
+</body>
+
+</html>

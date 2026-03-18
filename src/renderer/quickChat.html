@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Quick Chat</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: transparent;
+            overflow: hidden;
+            -webkit-app-region: no-drag;
+        }
+        .input-wrap {
+            display: flex;
+            align-items: center;
+            background: rgba(44, 62, 80, 0.95);
+            border-radius: 22px;
+            padding: 6px 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+            border: 1px solid rgba(255,255,255,0.12);
+            backdrop-filter: blur(12px);
+        }
+        .icon {
+            font-size: 16px;
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+        input {
+            flex: 1;
+            min-width: 0;
+            background: none;
+            border: none;
+            outline: none;
+            color: #ecf0f1;
+            font-size: 13px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        input::placeholder {
+            color: rgba(255,255,255,0.4);
+        }
+        .hint {
+            color: rgba(255,255,255,0.3);
+            font-size: 10px;
+            margin-left: 6px;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="input-wrap">
+        <span class="icon">🐱</span>
+        <input type="text" id="chatInput" placeholder="和小黑说点什么…" autofocus />
+        <span class="hint">Enter ↵</span>
+    </div>
+    <script>
+        const { ipcRenderer } = require('electron');
+        const input = document.getElementById('chatInput');
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && input.value.trim()) {
+                ipcRenderer.send('quick-chat-send', input.value.trim());
+            } else if (e.key === 'Escape') {
+                ipcRenderer.send('quick-chat-close');
+            }
+        });
+
+        input.focus();
+    </script>
+</body>
+</html>

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>待办事项</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #e8f4f8 0%, #f0f8ff 50%, #e6f7ff 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            border-radius: 10px;
+            border: 1px solid rgba(74, 108, 247, 0.1);
+            box-shadow: 0 4px 30px rgba(74, 108, 247, 0.15);
+            user-select: none;
+        }
+
+        /* 屏蔽系统右键菜单 */
+        body {
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .todo-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: linear-gradient(135deg, #e8f4f8 0%, #f0f8ff 50%, #e6f7ff 100%);
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4a6cf7 0%, #6b8cff 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            -webkit-app-region: drag;
+            box-shadow: 0 2px 10px rgba(74, 108, 247, 0.2);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .close-button {
+            width: 28px;
+            height: 28px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            -webkit-app-region: no-drag;
+            position: relative;
+            z-index: 1000;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .close-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .close-button:active {
+            background: rgba(255, 255, 255, 0.4);
+            transform: scale(0.95);
+        }
+
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            -webkit-app-region: no-drag;
+        }
+
+        .add-todo-section {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(74, 108, 247, 0.1);
+            border: 2px solid rgba(74, 108, 247, 0.05);
+        }
+
+        .add-todo-section h3 {
+            margin: 0 0 15px 0;
+            color: #2c5aa0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .todo-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid rgba(74, 108, 247, 0.1);
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            outline: none;
+            background: rgba(255, 255, 255, 0.8);
+            color: #2c5aa0;
+        }
+
+        .todo-input:focus {
+            border-color: #4a6cf7;
+            box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.1);
+        }
+
+        .todo-input::placeholder {
+            color: #5a7c9a;
+        }
+
+        .add-button {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #4a6cf7 0%, #6b8cff 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(74, 108, 247, 0.3);
+            pointer-events: auto;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .add-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(74, 108, 247, 0.4);
+        }
+
+        .add-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            pointer-events: none;
+        }
+
+        .add-button:not(:disabled) {
+            pointer-events: auto;
+        }
+
+        .todo-list {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(74, 108, 247, 0.1);
+            border: 2px solid rgba(74, 108, 247, 0.05);
+        }
+
+        .todo-list h3 {
+            margin: 0 0 20px 0;
+            color: #2c5aa0;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .todo-count {
+            background: linear-gradient(135deg, #4a6cf7 0%, #6b8cff 100%);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(74, 108, 247, 0.3);
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border: 2px solid rgba(74, 108, 247, 0.1);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(5px);
+        }
+
+        .todo-item:hover {
+            border-color: #4a6cf7;
+            box-shadow: 0 4px 15px rgba(74, 108, 247, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .todo-item.completed {
+            opacity: 0.7;
+            background: rgba(240, 248, 255, 0.8);
+            border-color: rgba(74, 108, 247, 0.05);
+        }
+
+        .todo-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #4a6cf7;
+            border-radius: 6px;
+            margin-right: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .todo-checkbox.checked {
+            background: linear-gradient(135deg, #4a6cf7 0%, #6b8cff 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(74, 108, 247, 0.3);
+        }
+
+        .todo-checkbox.checked::after {
+            content: '✓';
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .todo-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .todo-text {
+            font-size: 14px;
+            color: #2c5aa0;
+            line-height: 1.4;
+            font-weight: 500;
+        }
+
+        .todo-text.completed {
+            text-decoration: line-through;
+            color: #5a7c9a;
+        }
+
+        .todo-time {
+            font-size: 12px;
+            color: #5a7c9a;
+        }
+
+        .todo-actions {
+            display: flex;
+            gap: 10px;
+            margin-left: 15px;
+        }
+
+        .action-button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .complete-button {
+            background: linear-gradient(135deg, #28a745 0%, #34ce57 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        .complete-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+
+        .delete-button {
+            background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+        }
+
+        .delete-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #5a7c9a;
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.6;
+        }
+
+        .empty-state h4 {
+            margin: 0 0 10px 0;
+            color: #2c5aa0;
+            font-weight: 600;
+        }
+
+        .empty-state p {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(74, 108, 247, 0.1);
+            border: 2px solid rgba(74, 108, 247, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(74, 108, 247, 0.15);
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4a6cf7;
+            margin-bottom: 5px;
+            text-shadow: 0 1px 2px rgba(74, 108, 247, 0.1);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #5a7c9a;
+            font-weight: 500;
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(74, 108, 247, 0.05);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #4a6cf7 0%, #6b8cff 100%);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #3a5ce5 0%, #5a7cff 100%);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="todo-container">
+        <div class="header">
+            <h1>📝 待办事项</h1>
+            <button class="close-button" id="closeBtn">×</button>
+        </div>
+
+        <div class="content">
+            <!-- 统计卡片 -->
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalCount">0</div>
+                    <div class="stat-label">总任务</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="completedCount">0</div>
+                    <div class="stat-label">已完成</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="pendingCount">0</div>
+                    <div class="stat-label">待完成</div>
+                </div>
+            </div>
+
+            <!-- 添加待办区域 -->
+            <div class="add-todo-section">
+                <h3>➕ 添加新待办</h3>
+                <div class="input-group">
+                    <input type="text" class="todo-input" id="todoInput" placeholder="输入待办事项..." maxlength="200">
+                    <button class="add-button" id="addButton" disabled>添加</button>
+                </div>
+            </div>
+
+            <!-- 待办列表 -->
+            <div class="todo-list">
+                <h3>
+                    待办列表
+                    <span class="todo-count" id="todoCount">0</span>
+                </h3>
+                <div id="todoList">
+                    <!-- 待办项目将在这里动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        const closeBtn = document.getElementById('closeBtn');
+        const todoInput = document.getElementById('todoInput');
+        const addButton = document.getElementById('addButton');
+        const todoList = document.getElementById('todoList');
+        const todoCount = document.getElementById('todoCount');
+        const totalCount = document.getElementById('totalCount');
+        const completedCount = document.getElementById('completedCount');
+        const pendingCount = document.getElementById('pendingCount');
+
+        let todos = [];
+
+        document.addEventListener('contextmenu', e => { e.preventDefault(); });
+        document.addEventListener('selectstart', e => { e.preventDefault(); });
+        closeBtn.addEventListener('click', () => window.close());
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') window.close(); });
+
+        const header = document.querySelector('.header');
+        header.addEventListener('dblclick', (e) => {
+            if (e.target === header || e.target.tagName === 'H1') window.close();
+        });
+
+        function addTodo() {
+            const text = todoInput.value.trim();
+            if (!text) return;
+
+            todos.unshift({
+                id: Date.now().toString(),
+                text,
+                completed: false,
+                createdAt: new Date().toISOString(),
+                completedAt: null
+            });
+            saveTodos();
+            renderTodos();
+            updateStats();
+            todoInput.value = '';
+            addButton.disabled = true;
+        }
+
+        function completeTodo(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.completed = !todo.completed;
+                todo.completedAt = todo.completed ? new Date().toISOString() : null;
+                saveTodos();
+                renderTodos();
+                updateStats();
+            }
+        }
+
+        function deleteTodo(id) {
+            todos = todos.filter(t => t.id !== id);
+            saveTodos();
+            renderTodos();
+            updateStats();
+        }
+
+        function saveTodos() {
+            ipcRenderer.send('save-todos', todos);
+        }
+
+        async function loadTodos() {
+            const loaded = await ipcRenderer.invoke('load-todos');
+            todos = (loaded || []).filter(t => t.id && t.text);
+            renderTodos();
+            updateStats();
+        }
+
+        // AI 添加的待办实时推送
+        ipcRenderer.on('todos-updated', (event, newTodos) => {
+            todos = newTodos;
+            renderTodos();
+            updateStats();
+        });
+
+        function renderTodos() {
+            if (todos.length === 0) {
+                todoList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📝</div>
+                        <h4>暂无待办事项</h4>
+                        <p>添加一些待办事项来开始管理你的任务吧！</p>
+                    </div>`;
+                return;
+            }
+
+            todoList.innerHTML = todos.map(todo => `
+                <div class="todo-item ${todo.completed ? 'completed' : ''}" data-id="${todo.id}">
+                    <div class="todo-checkbox ${todo.completed ? 'checked' : ''}" onclick="completeTodo('${todo.id}')"></div>
+                    <div class="todo-content">
+                        <div class="todo-text ${todo.completed ? 'completed' : ''}">${escapeHtml(todo.text)}</div>
+                        <div class="todo-time">
+                            创建于: ${formatTime(todo.createdAt)}
+                            ${todo.completedAt ? ` | 完成于: ${formatTime(todo.completedAt)}` : ''}
+                        </div>
+                    </div>
+                    <div class="todo-actions">
+                        <button class="action-button complete-button" onclick="completeTodo('${todo.id}')">
+                            ${todo.completed ? '取消完成' : '完成'}
+                        </button>
+                        <button class="action-button delete-button" onclick="deleteTodo('${todo.id}')">删除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateStats() {
+            const total = todos.length;
+            const completed = todos.filter(t => t.completed).length;
+            totalCount.textContent = total;
+            completedCount.textContent = completed;
+            pendingCount.textContent = total - completed;
+            todoCount.textContent = total;
+        }
+
+        function formatTime(iso) {
+            if (!iso) return '未知时间';
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return '时间无效';
+            const diff = Date.now() - d;
+            if (diff < 60000) return '刚刚';
+            if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
+            if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
+            return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        addButton.addEventListener('click', () => addTodo());
+        todoInput.addEventListener('keypress', e => { if (e.key === 'Enter') addTodo(); });
+        todoInput.addEventListener('input', () => { addButton.disabled = !todoInput.value.trim(); });
+
+        loadTodos().then(() => todoInput.focus());
+    </script>
+</body>
+
+</html>

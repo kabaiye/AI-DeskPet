@@ -1,0 +1,61 @@
+{
+  "name": "xiaoheicat",
+  "version": "1.0.0",
+  "description": "XiaoHeiCat - AI-powered desktop pet companion",
+  "main": "src/main/index.js",
+  "scripts": {
+    "start": "node scripts/start.js",
+    "dev": "node scripts/start.js --dev",
+    "build": "electron-builder",
+    "build:win": "node scripts/build.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "keywords": [
+    "electron",
+    "desktop-pet",
+    "ai",
+    "companion"
+  ],
+  "author": "XiaoHeiCat Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^21.4.4",
+    "electron-builder": "^23.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.0",
+    "electron-screenshots": "^0.5.27",
+    "electron-store": "^8.1.0",
+    "openai": "^4.0.0"
+  },
+  "build": {
+    "appId": "com.xiaoheicat.app",
+    "productName": "XiaoHeiCat",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "XiaoHeiCat"
+    }
+  }
+}
