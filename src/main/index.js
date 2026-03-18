@@ -124,6 +124,52 @@ function createMainWindow() {
   });
 }
 
+// 戳一戳：防抖 + 连戳计数
+let pokeCount = 0;
+let pokeDebounceTimer = null;
+let pokeResetTimer = null;
+let pokeProcessing = false;
+const POKE_DEBOUNCE_MS = 800;
+const POKE_COUNT_RESET_MS = 30000;
+
+function triggerPoke() {
+  pokeCount++;
+  console.log(`Pet poked! count: ${pokeCount}`);
+
+  if (pokeResetTimer) clearTimeout(pokeResetTimer);
+  pokeResetTimer = setTimeout(() => { pokeCount = 0; }, POKE_COUNT_RESET_MS);
+
+  if (pokeDebounceTimer) clearTimeout(pokeDebounceTimer);
+  if (pokeProcessing) return;
+
+  pokeDebounceTimer = setTimeout(async () => {
+    if (pokeProcessing) return;
+    pokeProcessing = true;
+    try {
+      const currentCount = pokeCount;
+      console.log(`[Poke] Generating AI reaction for ${currentCount} pokes`);
+      const { message, emotion } = await generatePokeReaction(currentCount);
+      console.log(`[Poke] ${emotion}: ${message}`);
+
+      createPetStatusWindow(message);
+
+      if (emotion && petWindow && !petWindow.isDestroyed()) {
+        petWindow.webContents.send('change-emotion', emotion);
+        setTimeout(() => {
+          if (petWindow && !petWindow.isDestroyed()) {
+            petWindow.webContents.send('reset-emotion');
+          }
+        }, 4000);
+      }
+    } catch (error) {
+      console.error('Poke reaction error:', error);
+      createPetStatusWindow('喵？');
+    } finally {
+      pokeProcessing = false;
+    }
+  }, POKE_DEBOUNCE_MS);
+}
+
 // 创建宠物窗口
 function createPetWindow() {
   petWindow = new BrowserWindow({
@@ -208,52 +254,6 @@ function createPetWindow() {
       console.error('Error executing JavaScript in pet window:', error);
     });
   });
-
-  // 戳一戳：防抖 + 连戳计数
-  let pokeCount = 0;
-  let pokeDebounceTimer = null;
-  let pokeResetTimer = null;
-  let pokeProcessing = false;
-  const POKE_DEBOUNCE_MS = 800;
-  const POKE_COUNT_RESET_MS = 30000; // 30秒无操作重置计数
-
-  function triggerPoke() {
-    pokeCount++;
-    console.log(`Pet poked! count: ${pokeCount}`);
-
-    if (pokeResetTimer) clearTimeout(pokeResetTimer);
-    pokeResetTimer = setTimeout(() => { pokeCount = 0; }, POKE_COUNT_RESET_MS);
-
-    if (pokeDebounceTimer) clearTimeout(pokeDebounceTimer);
-    if (pokeProcessing) return;
-
-    pokeDebounceTimer = setTimeout(async () => {
-      if (pokeProcessing) return;
-      pokeProcessing = true;
-      try {
-        const currentCount = pokeCount;
-        console.log(`[Poke] Generating AI reaction for ${currentCount} pokes`);
-        const { message, emotion } = await generatePokeReaction(currentCount);
-        console.log(`[Poke] ${emotion}: ${message}`);
-
-        createPetStatusWindow(message);
-
-        if (emotion && petWindow && !petWindow.isDestroyed()) {
-          petWindow.webContents.send('change-emotion', emotion);
-          setTimeout(() => {
-            if (petWindow && !petWindow.isDestroyed()) {
-              petWindow.webContents.send('reset-emotion');
-            }
-          }, 4000);
-        }
-      } catch (error) {
-        console.error('Poke reaction error:', error);
-        createPetStatusWindow('喵？');
-      } finally {
-        pokeProcessing = false;
-      }
-    }, POKE_DEBOUNCE_MS);
-  }
 
   ipcMain.on('pet-clicked', () => triggerPoke());
 
@@ -800,11 +800,24 @@ function createPetWindow() {
     chatDisplayMessages.push({ role: 'user', text: message });
     storage.save('chatHistory', chatDisplayMessages);
     try {
-      const reply = await chatWithPet(message);
-      chatDisplayMessages.push({ role: 'pet', text: reply });
+      const rawReply = await chatWithPet(message);
+      const { displayReply, scheduleContent, reminderTime } = parseScheduleFromReply(rawReply);
+
+      chatDisplayMessages.push({ role: 'pet', text: displayReply });
       storage.save('chatHistory', chatDisplayMessages);
       if (chatWindow && !chatWindow.isDestroyed()) {
-        chatWindow.webContents.send('chat-reply', reply);
+        chatWindow.webContents.send('chat-reply', displayReply);
+      }
+
+      if (scheduleContent) {
+        console.log('Chat detected schedule:', scheduleContent, 'reminder:', reminderTime);
+        addTodoFromAI(scheduleContent, reminderTime);
+        const timeHint = reminderTime
+          ? `（提醒：${new Date(reminderTime).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}）`
+          : '';
+        setTimeout(() => {
+          createPetStatusWindow(`📝 已添加待办：${scheduleContent}${timeHint}`);
+        }, 1500);
       }
     } catch (error) {
       console.error('Error processing chat message:', error);
@@ -958,7 +971,33 @@ function handleAIResponse(aiResponse) {
   }
 }
 
-function addTodoFromAI(content) {
+// 解析 AI 回复中的 /addSchedule 标记，格式：/addSchedule 内容||YYYY-MM-DD HH:mm
+function parseScheduleFromReply(reply) {
+  const match = reply.match(/\n?\/?addSchedule\s+(.+)$/);
+  if (match) {
+    const raw = match[1].trim();
+    const parts = raw.split('||');
+    const content = parts[0].trim();
+    let reminderTime = null;
+    if (parts[1]) {
+      const parsed = new Date(parts[1].trim().replace(/\s+/, 'T'));
+      if (!isNaN(parsed.getTime()) && parsed > new Date()) {
+        reminderTime = parsed.toISOString();
+      }
+    }
+    return {
+      displayReply: reply.replace(match[0], '').trim(),
+      scheduleContent: content,
+      reminderTime
+    };
+  }
+  return { displayReply: reply, scheduleContent: null, reminderTime: null };
+}
+
+// 活跃的提醒定时器 Map<todoId, timerId>
+const todoReminderTimers = new Map();
+
+function addTodoFromAI(content, reminderTime) {
   try {
     const todos = storage.load('todos', []);
     const todo = {
@@ -966,18 +1005,62 @@ function addTodoFromAI(content) {
       text: content,
       completed: false,
       createdAt: new Date().toISOString(),
-      completedAt: null
+      completedAt: null,
+      reminderTime: reminderTime || null
     };
     todos.unshift(todo);
     storage.save('todos', todos);
-    console.log('AI todo saved to file:', content);
+    console.log('AI todo saved:', content, 'reminder:', reminderTime);
 
     if (todoWindow && !todoWindow.isDestroyed()) {
       todoWindow.webContents.send('todos-updated', todos);
     }
+
+    if (reminderTime) {
+      scheduleTodoReminder(todo.id, content, reminderTime);
+    }
   } catch (error) {
     console.error('Error adding todo from AI:', error);
     createPetStatusWindow(`📝 AI已识别到待办事项：${content}`);
+  }
+}
+
+// 设置定时提醒
+function scheduleTodoReminder(todoId, text, reminderTimeISO) {
+  const delay = new Date(reminderTimeISO).getTime() - Date.now();
+  if (delay <= 0) return;
+
+  if (todoReminderTimers.has(todoId)) {
+    clearTimeout(todoReminderTimers.get(todoId));
+  }
+
+  const timerId = setTimeout(() => {
+    todoReminderTimers.delete(todoId);
+
+    // 用持久气泡提醒，不会因失焦自动关闭
+    createPersistentReminder(`⏰ 待办提醒：${text}`);
+
+    if (petWindow && !petWindow.isDestroyed()) {
+      petWindow.webContents.send('change-emotion', '好棒');
+      setTimeout(() => {
+        if (petWindow && !petWindow.isDestroyed()) {
+          petWindow.webContents.send('reset-emotion');
+        }
+      }, 6000);
+    }
+  }, delay);
+
+  todoReminderTimers.set(todoId, timerId);
+  console.log(`Reminder scheduled for "${text}" in ${Math.round(delay / 60000)} minutes`);
+}
+
+// 应用启动时恢复所有未到期的提醒
+function restoreTodoReminders() {
+  const todos = storage.load('todos', []);
+  for (const todo of todos) {
+    if (todo.reminderTime && !todo.completed && new Date(todo.reminderTime) > new Date()) {
+      scheduleTodoReminder(todo.id, todo.text, todo.reminderTime);
+    }
   }
 }
 
@@ -1008,16 +1091,38 @@ function togglePetWindow() {
   }
 }
 
+// 将用户设置的快捷键字符串标准化为 Electron accelerator 格式
+function normalizeAccelerator(key) {
+  const parts = key.split('+').map(p => p.trim());
+  const normalized = parts.map(p => {
+    const lower = p.toLowerCase();
+    if (lower === 'ctrl' || lower === 'control') return 'Ctrl';
+    if (lower === 'shift') return 'Shift';
+    if (lower === 'alt') return 'Alt';
+    if (lower === 'cmd' || lower === 'command' || lower === 'meta' || lower === 'super') return 'Super';
+    if (/^f\d{1,2}$/.test(lower)) return lower.toUpperCase();
+    if (p.length === 1) return p.toUpperCase();
+    const specialKeys = {
+      'space': 'Space', 'tab': 'Tab', 'enter': 'Return', 'return': 'Return',
+      'backspace': 'Backspace', 'delete': 'Delete', 'insert': 'Insert',
+      'up': 'Up', 'down': 'Down', 'left': 'Left', 'right': 'Right',
+      'home': 'Home', 'end': 'End', 'pageup': 'PageUp', 'pagedown': 'PageDown',
+      'escape': 'Escape', 'esc': 'Escape'
+    };
+    return specialKeys[lower] || p;
+  });
+  return normalized.join('+');
+}
+
 // 加载并注册快捷键
 function loadAndRegisterShortcuts() {
   try {
-    // 默认快捷键配置
     const defaultShortcuts = {
-      'quick-chat': { key: 'F1', description: '快捷聊天' },
-      'ai-screenshot': { key: 'F2', description: 'AI区域截图' },
-      'water-reminder': { key: 'F3', description: '喝水提醒' },
-      'poke-pet': { key: 'F4', description: '戳一戳小黑' },
-      'open-chat': { key: 'F5', description: '打开聊天' },
+      'quick-chat': { key: 'Alt+F1', description: '快捷聊天' },
+      'ai-screenshot': { key: 'Alt+F2', description: 'AI区域截图' },
+      'water-reminder': { key: '', description: '喝水提醒' },
+      'poke-pet': { key: 'Alt+F3', description: '戳一戳小黑' },
+      'open-chat': { key: '', description: '打开聊天' },
       'toggle-pet': { key: 'Ctrl+H', description: '桌宠隐藏/显示' },
       'open-todo': { key: 'Ctrl+T', description: '打开待办' },
       'open-main': { key: 'Ctrl+O', description: '打开主页面' }
@@ -1029,22 +1134,13 @@ function loadAndRegisterShortcuts() {
       Object.assign(shortcuts, savedShortcuts);
     }
 
-    // 注册快捷键
     Object.entries(shortcuts).forEach(([action, config]) => {
       try {
-        const key = config.key.toLowerCase();
-        let accelerator = key;
-
-        // 处理组合键
-        if (key.includes('+')) {
-          accelerator = key;
-        } else if (key.startsWith('f') && key.length > 1) {
-          // F键处理
-          accelerator = key.toUpperCase();
-        } else {
-          accelerator = key.toUpperCase();
+        if (!config.key) {
+          console.log(`Skipping shortcut (no key assigned): ${action}`);
+          return;
         }
-
+        const accelerator = normalizeAccelerator(config.key);
         console.log(`Registering shortcut: ${action} -> ${accelerator}`);
 
         const success = globalShortcut.register(accelerator, async () => {
@@ -1070,25 +1166,15 @@ function loadAndRegisterShortcuts() {
 // 更新全局快捷键
 function updateGlobalShortcuts(shortcuts) {
   try {
-    // 先注销所有现有的快捷键
     globalShortcut.unregisterAll();
 
-    // 重新注册新的快捷键
     Object.entries(shortcuts).forEach(([action, config]) => {
       try {
-        const key = config.key.toLowerCase();
-        let accelerator = key;
-
-        // 处理组合键
-        if (key.includes('+')) {
-          accelerator = key;
-        } else if (key.startsWith('f') && key.length > 1) {
-          // F键处理
-          accelerator = key.toUpperCase();
-        } else {
-          accelerator = key.toUpperCase();
+        if (!config.key) {
+          console.log(`Skipping shortcut (no key assigned): ${action}`);
+          return;
         }
-
+        const accelerator = normalizeAccelerator(config.key);
         console.log(`Registering shortcut: ${action} -> ${accelerator}`);
 
         const success = globalShortcut.register(accelerator, async () => {
@@ -1195,8 +1281,8 @@ function createPetStatusWindow(message) {
   }
 
   const newPetStatusWindow = new BrowserWindow({
-    width: 220,
-    height: 120,
+    width: 248,
+    height: 148,
     frame: false,
     alwaysOnTop: true,
     transparent: true,
@@ -1247,50 +1333,52 @@ function createPetStatusWindow(message) {
     console.log('Using default pet position:', petPosition);
   }
 
-  // 气泡窗口的尺寸
-  const bubbleWidth = 220;
-  const bubbleHeight = 120;
-  const bubbleTailHeight = 16; // 尾巴的高度
+  const bubbleWidth = 248;
+  const bubbleHeight = 148;
+  const gap = 2;
 
-  // 计算最佳位置
-  let bubbleX, bubbleY, bubbleDirection;
-
-  // 计算桌宠中心位置
-  const petCenterX = petPosition[0] + (petSize[0] / 2);
-  const petCenterY = petPosition[1] + (petSize[1] / 2);
-
-  // 屏幕绝对边界
+  const petCenterX = petPosition[0] + petSize[0] / 2;
   const sLeft = screenX;
   const sTop = screenY;
   const sRight = screenX + screenWidth;
   const sBottom = screenY + screenHeight;
 
-  // 优先尝试上方位置
-  if (petPosition[1] - bubbleHeight - bubbleTailHeight >= sTop + 10) {
-    bubbleX = petCenterX - (bubbleWidth / 2);
-    bubbleY = petPosition[1] - bubbleHeight - bubbleTailHeight;
-    bubbleDirection = 'top';
-  } else if (petPosition[1] + petSize[1] + bubbleHeight + bubbleTailHeight <= sBottom) {
-    bubbleX = petCenterX - (bubbleWidth / 2);
-    bubbleY = petPosition[1] + petSize[1] + bubbleTailHeight;
-    bubbleDirection = 'bottom';
-  } else if (petPosition[0] - bubbleWidth - bubbleTailHeight >= sLeft + 10) {
-    bubbleX = petPosition[0] - bubbleWidth - bubbleTailHeight;
-    bubbleY = petCenterY - (bubbleHeight / 2);
-    bubbleDirection = 'left';
-  } else if (petPosition[0] + petSize[0] + bubbleWidth + bubbleTailHeight <= sRight) {
-    bubbleX = petPosition[0] + petSize[0] + bubbleTailHeight;
-    bubbleY = petCenterY - (bubbleHeight / 2);
+  // 计算桌宠到屏幕左右两侧的空间
+  const leftSpace = petPosition[0] - sLeft;
+  const rightSpace = sRight - (petPosition[0] + petSize[0]);
+
+  let bubbleX, bubbleY, bubbleDirection;
+
+  // 优先在更宽的一侧水平放置（紧贴小黑）
+  if (rightSpace >= leftSpace && rightSpace >= bubbleWidth + gap + 10) {
+    bubbleX = petPosition[0] + petSize[0] + gap;
+    bubbleY = petPosition[1] + petSize[1] / 2 - bubbleHeight + 24;
     bubbleDirection = 'right';
-  } else {
-    bubbleX = Math.max(sLeft + 10, Math.min(sRight - bubbleWidth - 10, petCenterX - (bubbleWidth / 2)));
-    bubbleY = Math.max(sTop + 10, petPosition[1] - bubbleHeight - bubbleTailHeight);
+  } else if (leftSpace >= bubbleWidth + gap + 10) {
+    bubbleX = petPosition[0] - bubbleWidth - gap;
+    bubbleY = petPosition[1] + petSize[1] / 2 - bubbleHeight + 24;
+    bubbleDirection = 'left';
+  } else if (petPosition[1] - bubbleHeight - gap >= sTop + 10) {
+    // 上方，偏向更宽的一侧
+    if (rightSpace >= leftSpace) {
+      bubbleX = petPosition[0] + petSize[0] * 0.3;
+    } else {
+      bubbleX = petPosition[0] + petSize[0] * 0.7 - bubbleWidth;
+    }
+    bubbleY = petPosition[1] - bubbleHeight - gap;
     bubbleDirection = 'top';
+  } else {
+    if (rightSpace >= leftSpace) {
+      bubbleX = petPosition[0] + petSize[0] * 0.3;
+    } else {
+      bubbleX = petPosition[0] + petSize[0] * 0.7 - bubbleWidth;
+    }
+    bubbleY = petPosition[1] + petSize[1] + gap;
+    bubbleDirection = 'bottom';
   }
 
-  // 确保气泡不会超出当前屏幕边界
-  bubbleX = Math.max(sLeft + 10, Math.min(sRight - bubbleWidth - 10, bubbleX));
-  bubbleY = Math.max(sTop + 10, Math.min(sBottom - bubbleHeight - 10, bubbleY));
+  bubbleX = Math.max(sLeft + 5, Math.min(sRight - bubbleWidth - 5, bubbleX));
+  bubbleY = Math.max(sTop + 5, Math.min(sBottom - bubbleHeight - 5, bubbleY));
 
   console.log(`Positioning bubble at (${bubbleX}, ${bubbleY}) direction: ${bubbleDirection}, display: ${display.id}`);
 
@@ -1336,6 +1424,72 @@ function createPetStatusWindow(message) {
   petStatusWindow = newPetStatusWindow;
 
   return newPetStatusWindow;
+}
+
+// 创建持久提醒气泡（不因失焦关闭，15秒后自动消失，点击关闭）
+function createPersistentReminder(message) {
+  console.log('Creating persistent reminder:', message);
+
+  const reminderWin = new BrowserWindow({
+    width: 308,
+    height: 168,
+    frame: false,
+    alwaysOnTop: true,
+    transparent: true,
+    resizable: false,
+    skipTaskbar: true,
+    focusable: true,
+    hasShadow: false,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
+  });
+
+  reminderWin.loadFile(rendererPath('petStatus.html'));
+
+  const display = getPetDisplay();
+  const wa = display.workArea;
+  let rx, ry;
+  let reminderDirection = 'top';
+
+  if (petWindow && !petWindow.isDestroyed()) {
+    const [px, py] = petWindow.getPosition();
+    const [pw, ph] = petWindow.getSize();
+    const leftSpace = px - wa.x;
+    const rightSpace = (wa.x + wa.width) - (px + pw);
+    const gap = 4;
+
+    if (rightSpace >= leftSpace && rightSpace >= 290) {
+      rx = px + pw + gap;
+      ry = py + ph / 2 - 100;
+      reminderDirection = 'right';
+    } else if (leftSpace >= 290) {
+      rx = px - 280 - gap;
+      ry = py + ph / 2 - 100;
+      reminderDirection = 'left';
+    } else {
+      rx = rightSpace >= leftSpace ? px + pw * 0.3 : px + pw * 0.7 - 280;
+      ry = py - 150;
+      if (ry < wa.y + 10) { ry = py + ph + gap; reminderDirection = 'bottom'; }
+    }
+  } else {
+    rx = wa.x + wa.width / 2 - 140;
+    ry = wa.y + wa.height / 3;
+  }
+  rx = Math.max(wa.x + 5, Math.min(wa.x + wa.width - 290, rx));
+  ry = Math.max(wa.y + 5, Math.min(wa.y + wa.height - 150, ry));
+  reminderWin.setPosition(Math.round(rx), Math.round(ry));
+
+  reminderWin.webContents.once('dom-ready', () => {
+    reminderWin.webContents.send('update-status-message', message);
+    reminderWin.webContents.send('set-bubble-direction', reminderDirection);
+    reminderWin.webContents.send('set-persistent-mode', 15000);
+  });
+
+  reminderWin.on('closed', () => {
+    console.log('Persistent reminder closed');
+  });
 }
 
 // 创建聊天窗口
@@ -1489,10 +1643,12 @@ ipcMain.on('quick-chat-send', async (event, userMessage) => {
   }
 
   try {
-    const reply = await chatWithPet(userMessage);
-    quickChatHistory.push({ role: 'assistant', content: reply });
+    const rawReply = await chatWithPet(userMessage);
+    const { displayReply, scheduleContent, reminderTime } = parseScheduleFromReply(rawReply);
 
-    createPetStatusWindow(reply);
+    quickChatHistory.push({ role: 'assistant', content: displayReply });
+
+    createPetStatusWindow(displayReply);
 
     if (petWindow && !petWindow.isDestroyed()) {
       petWindow.webContents.send('change-emotion', '嘿嘿被夸了');
@@ -1501,6 +1657,17 @@ ipcMain.on('quick-chat-send', async (event, userMessage) => {
           petWindow.webContents.send('reset-emotion');
         }
       }, 4000);
+    }
+
+    if (scheduleContent) {
+      console.log('Quick chat detected schedule:', scheduleContent, 'reminder:', reminderTime);
+      addTodoFromAI(scheduleContent, reminderTime);
+      const timeHint = reminderTime
+        ? `（提醒：${new Date(reminderTime).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}）`
+        : '';
+      setTimeout(() => {
+        createPetStatusWindow(`📝 已添加待办：${scheduleContent}${timeHint}`);
+      }, 1500);
     }
   } catch (error) {
     console.error('Quick chat error:', error);
@@ -1608,22 +1775,6 @@ function createContextMenuWindow(x, y, petPosition = [0, 0]) {
     console.log('Context menu window closing...');
   });
 
-  // 自动关闭功能 - 只有在没有透明度窗口打开时才自动关闭
-  setTimeout(() => {
-    try {
-      if (newContextMenuWindow && !newContextMenuWindow.isDestroyed()) {
-        // 检查是否有透明度窗口打开
-        if (!transparencyWindow || transparencyWindow.isDestroyed()) {
-          console.log('Auto-closing context menu window (no transparency window open)');
-          newContextMenuWindow.close();
-        } else {
-          console.log('Keeping context menu open (transparency window is active)');
-        }
-      }
-    } catch (error) {
-      console.error('Error auto-closing context menu window:', error);
-    }
-  }, 5000); // 5秒后自动关闭
 
   // 更新全局变量
   contextMenuWindow = newContextMenuWindow;
@@ -2053,6 +2204,12 @@ ipcMain.handle('load-todos', () => {
   return storage.load('todos', []);
 });
 
+// 渲染进程手动创建待办时设置提醒
+ipcMain.on('schedule-todo-reminder', (event, { text, reminderTime }) => {
+  const todoId = Date.now().toString();
+  scheduleTodoReminder(todoId, text, reminderTime);
+});
+
 ipcMain.on('save-shortcuts', (event, shortcuts) => {
   storage.save('shortcuts', shortcuts);
 });
@@ -2087,6 +2244,7 @@ app.whenReady().then(() => {
     createPetWindow(); // 创建宠物窗口
     setupScreenshots(); // 初始化第三方区域截屏
     registerScreenshotListener();
+    restoreTodoReminders();
 
     // 注入弹窗创建函数给ActivityMonitor
     setCreatePetStatusWindowFunction(createPetStatusWindow);

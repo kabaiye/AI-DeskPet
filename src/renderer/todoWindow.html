@@ -276,6 +276,29 @@
             color: #5a7c9a;
         }
 
+        .todo-reminder {
+            font-size: 12px;
+            color: #e67e22;
+            font-weight: 500;
+        }
+
+        .todo-reminder.expired {
+            color: #95a5a6;
+            text-decoration: line-through;
+        }
+
+        .time-label {
+            font-size: 13px;
+            color: #2c5aa0;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .time-input {
+            flex: 1;
+            font-size: 13px;
+        }
+
         .todo-actions {
             display: flex;
             gap: 10px;
@@ -426,6 +449,10 @@
                     <input type="text" class="todo-input" id="todoInput" placeholder="输入待办事项..." maxlength="200">
                     <button class="add-button" id="addButton" disabled>添加</button>
                 </div>
+                <div class="input-group">
+                    <label class="time-label" for="reminderInput">⏰ 提醒时间（可选）</label>
+                    <input type="datetime-local" class="todo-input time-input" id="reminderInput">
+                </div>
             </div>
 
             <!-- 待办列表 -->
@@ -447,6 +474,7 @@
         const closeBtn = document.getElementById('closeBtn');
         const todoInput = document.getElementById('todoInput');
         const addButton = document.getElementById('addButton');
+        const reminderInput = document.getElementById('reminderInput');
         const todoList = document.getElementById('todoList');
         const todoCount = document.getElementById('todoCount');
         const totalCount = document.getElementById('totalCount');
@@ -454,6 +482,23 @@
         const pendingCount = document.getElementById('pendingCount');
 
         let todos = [];
+
+        // 设置时间选择器最小值为当前时间
+        function updateReminderMin() {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() + 1);
+            reminderInput.min = now.toISOString().slice(0, 16);
+        }
+        updateReminderMin();
+        setInterval(updateReminderMin, 30000);
+
+        // 选择时间时校验不能早于当前
+        reminderInput.addEventListener('change', () => {
+            if (reminderInput.value && new Date(reminderInput.value) <= new Date()) {
+                reminderInput.value = '';
+                alert('提醒时间必须晚于当前时间');
+            }
+        });
 
         document.addEventListener('contextmenu', e => { e.preventDefault(); });
         document.addEventListener('selectstart', e => { e.preventDefault(); });
@@ -469,18 +514,28 @@
             const text = todoInput.value.trim();
             if (!text) return;
 
+            const reminderTime = reminderInput.value
+                ? new Date(reminderInput.value).toISOString()
+                : null;
+
             todos.unshift({
                 id: Date.now().toString(),
                 text,
                 completed: false,
                 createdAt: new Date().toISOString(),
-                completedAt: null
+                completedAt: null,
+                reminderTime
             });
             saveTodos();
             renderTodos();
             updateStats();
             todoInput.value = '';
+            reminderInput.value = '';
             addButton.disabled = true;
+
+            if (reminderTime) {
+                ipcRenderer.send('schedule-todo-reminder', { text, reminderTime });
+            }
         }
 
         function completeTodo(id) {
@@ -530,11 +585,16 @@
                 return;
             }
 
-            todoList.innerHTML = todos.map(todo => `
+            todoList.innerHTML = todos.map(todo => {
+                const reminderHtml = todo.reminderTime
+                    ? `<div class="todo-reminder ${new Date(todo.reminderTime) <= new Date() ? 'expired' : ''}">⏰ 提醒：${formatAbsoluteTime(todo.reminderTime)}</div>`
+                    : '';
+                return `
                 <div class="todo-item ${todo.completed ? 'completed' : ''}" data-id="${todo.id}">
                     <div class="todo-checkbox ${todo.completed ? 'checked' : ''}" onclick="completeTodo('${todo.id}')"></div>
                     <div class="todo-content">
                         <div class="todo-text ${todo.completed ? 'completed' : ''}">${escapeHtml(todo.text)}</div>
+                        ${reminderHtml}
                         <div class="todo-time">
                             创建于: ${formatTime(todo.createdAt)}
                             ${todo.completedAt ? ` | 完成于: ${formatTime(todo.completedAt)}` : ''}
@@ -546,8 +606,8 @@
                         </button>
                         <button class="action-button delete-button" onclick="deleteTodo('${todo.id}')">删除</button>
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
 
         function updateStats() {
@@ -568,6 +628,13 @@
             if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
             if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
             return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function formatAbsoluteTime(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return '时间无效';
+            return d.toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', weekday: 'short' });
         }
 
         function escapeHtml(text) {

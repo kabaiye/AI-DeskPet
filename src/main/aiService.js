@@ -445,7 +445,8 @@ const MAX_CHAT_HISTORY = 20;
 async function chatWithPet(userMessage) {
     const petSettings = getCurrentPetSettings();
 
-    chatHistory.push({ role: 'user', content: userMessage });
+    const msgTime = new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    chatHistory.push({ role: 'user', content: `[${msgTime}] ${userMessage}` });
 
     if (chatHistory.length > MAX_CHAT_HISTORY * 2) {
         chatHistory = chatHistory.slice(-MAX_CHAT_HISTORY * 2);
@@ -467,15 +468,25 @@ async function chatWithPet(userMessage) {
             return reply;
         }
 
+        const now = new Date();
+        const currentTimeStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'long' });
+
         const systemPrompt = `${petSettings.petCharacter}
 
-你是${petSettings.petName}，正在和主人聊天。请注意：
+你是${petSettings.petName}，正在和主人聊天。当前时间：${currentTimeStr}。请注意：
 1. 保持你活泼可爱的性格，用轻松有趣的语气回复
-2. 回复简洁自然，像朋友聊天一样，一般不超过50字
+2. 回复简洁自然，像朋友聊天一样，一般不超过100字
 3. 可以使用少量表情符号增加趣味
 4. 记住之前的对话内容，保持连贯
 5. 如果主人心情不好，要温柔安慰
-6. 如果是日常闲聊，可以适当卖萌`;
+6. 如果是日常闲聊，可以适当卖萌
+7. 判断主人的消息是否包含需要创建待办或日程提醒的意图（如"提醒我…"、"记一下…"、"别忘了…"、"下午3点要…"、"明天…"、"帮我安排…"等）。如果是，请在回复的最末尾另起一行添加标记，格式为：
+   /addSchedule 待办内容||YYYY-MM-DD HH:mm
+   其中时间必须使用24小时制，根据当前时间推算出具体的年月日时分。例如：
+   - 主人说"提醒我下午3点开会" → 你回复"好的喵，到点了我叫你！\n/addSchedule 开会||${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} 15:00"
+   - 主人说"明天上午10点交报告" → 你回复"记住啦！明天我盯着你～\n/addSchedule 交报告||明天对应的具体日期 10:00"
+   - 如果主人没有提及具体时间，可根据语义合理推断，实在无法推断则用当前时间往后1小时
+   - 如果对话不涉及待办或提醒，绝对不要添加 /addSchedule 标记`;
 
         const messages = [
             { role: 'system', content: systemPrompt },

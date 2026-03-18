@@ -140,17 +140,6 @@
 
             console.log('Context menu window script loaded successfully');
 
-            // 自动关闭功能（4.5秒后开始淡出，5秒后关闭）
-            // 但是如果有展开的透明度控制或透明度窗口打开，则不自动关闭
-            setTimeout(() => {
-                const isTransparencyExpanded = transparencyControl.classList.contains('expanded');
-                if (!isTransparencyExpanded && !isTransparencyWindowOpen && contextMenu) {
-                    contextMenu.classList.add('fade-out');
-                } else {
-                    console.log('Keeping context menu open (transparency control active)');
-                }
-            }, 4500);
-
             // 监听透明度窗口状态变化
             let isTransparencyWindowOpen = false;
 
@@ -308,32 +297,6 @@
                 } catch (error) {
                     console.error('Error notifying context menu close:', error);
                 }
-            });
-
-            // 鼠标悬停时重置自动关闭计时器
-            let autoCloseTimer;
-            const resetAutoClose = () => {
-                if (autoCloseTimer) {
-                    clearTimeout(autoCloseTimer);
-                }
-                autoCloseTimer = setTimeout(() => {
-                    const isTransparencyExpanded = transparencyControl.classList.contains('expanded');
-                    if (!isTransparencyExpanded && !isTransparencyWindowOpen && contextMenu) {
-                        contextMenu.classList.add('fade-out');
-                    }
-                }, 4500);
-            };
-
-            // 监听鼠标进入和离开
-            contextMenu.addEventListener('mouseenter', () => {
-                if (contextMenu.classList.contains('fade-out')) {
-                    contextMenu.classList.remove('fade-out');
-                }
-                resetAutoClose();
-            });
-
-            contextMenu.addEventListener('mouseleave', () => {
-                resetAutoClose();
             });
 
             console.log('Context menu event listeners added successfully');
