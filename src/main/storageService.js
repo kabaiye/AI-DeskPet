@@ -8,9 +8,9 @@ function getDataDir() {
     if (dataDir) return dataDir;
 
     if (app.isPackaged) {
-        dataDir = path.join(path.dirname(process.execPath), 'XiaoHeiCat_Data');
+        dataDir = path.join(path.dirname(process.execPath), 'userdata');
     } else {
-        dataDir = path.join(__dirname, '../..', 'XiaoHeiCat_Data');
+        dataDir = path.join(__dirname, '../..', 'userdata');
     }
 
     if (!fs.existsSync(dataDir)) {

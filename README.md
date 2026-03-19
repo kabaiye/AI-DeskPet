@@ -74,7 +74,7 @@
 │   │   ├── characterCreator.html # 角色创建/编辑器
 │   │   └── ...                # 其他页面
 │   └── assets/imgs/           # 角色素材（GIF/PNG）
-└── XiaoHeiCat_Data/           # 运行时数据（自动生成，已 gitignore）
+└── userdata/           # 运行时数据（自动生成，已 gitignore）
     ├── settings.json          # 全局设置（API Key）
     └── chatHistory.json       # 聊天记录（切换角色时清空）
 ```
