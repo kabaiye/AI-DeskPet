@@ -4,6 +4,7 @@ const {
     generateRandomThought,
     generateMilestoneMessage
 } = require('./aiService');
+const state = require('./appState');
 
 const store = new Store();
 
@@ -88,8 +89,7 @@ function scheduleRandomThoughts() {
         const delay = THOUGHT_MIN_INTERVAL + Math.random() * (THOUGHT_MAX_INTERVAL - THOUGHT_MIN_INTERVAL);
         thoughtTimer = setTimeout(async () => {
             const hour = new Date().getHours();
-            // 深夜不打扰
-            if (hour >= 1 && hour < 7) {
+            if (state.doNotDisturb || (hour >= 1 && hour < 7)) {
                 nextThought();
                 return;
             }
@@ -116,8 +116,7 @@ function scheduleLateNightCare() {
         const hour = new Date().getHours();
         const now = Date.now();
 
-        // 23:00-4:00 之间，且距上次深夜关怀超过 1 小时
-        if ((hour >= 23 || hour < 4) && (now - lastLateNightMsg > 60 * 60 * 1000)) {
+        if (!state.doNotDisturb && (hour >= 23 || hour < 4) && (now - lastLateNightMsg > 60 * 60 * 1000)) {
             lastLateNightMsg = now;
 
             const context = {

@@ -195,27 +195,27 @@
 
         <div class="shortcut-card">
             <h3>⌨️ 快捷键</h3>
-            <div class="shortcut-row">
+            <div class="shortcut-row" data-action="quick-chat">
                 <span class="shortcut-key">Alt+F1</span>
                 <span class="shortcut-label">快捷聊天 <span class="desc">弹出输入框，快速提问</span></span>
             </div>
-            <div class="shortcut-row">
+            <div class="shortcut-row" data-action="ai-screenshot">
                 <span class="shortcut-key">Alt+F2</span>
                 <span class="shortcut-label">AI 截图 <span class="desc">截图后可附加问题一起发送</span></span>
             </div>
-            <div class="shortcut-row">
+            <div class="shortcut-row" data-action="poke-pet">
                 <span class="shortcut-key">Alt+F3</span>
                 <span class="shortcut-label" id="pokeLabel">戳一戳 <span class="desc">和桌宠互动，获取随机回应</span></span>
             </div>
-            <div class="shortcut-row">
+            <div class="shortcut-row" data-action="toggle-pet">
                 <span class="shortcut-key">Ctrl+H</span>
                 <span class="shortcut-label" id="toggleLabel">显示/隐藏 <span class="desc">切换桌宠的显示状态</span></span>
             </div>
-            <div class="shortcut-row">
+            <div class="shortcut-row" data-action="open-todo">
                 <span class="shortcut-key">Ctrl+T</span>
                 <span class="shortcut-label">待办清单 <span class="desc">查看和管理待办事项</span></span>
             </div>
-            <div class="shortcut-row">
+            <div class="shortcut-row" data-action="open-main">
                 <span class="shortcut-key">Ctrl+O</span>
                 <span class="shortcut-label">打开主界面 <span class="desc">显示本窗口</span></span>
             </div>
@@ -245,6 +245,19 @@
 
         (async function initMainPage() {
             try {
+                const savedShortcuts = await ipcRenderer.invoke('load-shortcuts');
+                if (savedShortcuts) {
+                    document.querySelectorAll('.shortcut-row[data-action]').forEach(row => {
+                        const action = row.dataset.action;
+                        const config = savedShortcuts[action];
+                        if (config) {
+                            const keyEl = row.querySelector('.shortcut-key');
+                            if (keyEl) keyEl.textContent = config.key || '未设置';
+                            if (!config.key) row.style.display = 'none';
+                        }
+                    });
+                }
+
                 const c = await ipcRenderer.invoke('get-character-config');
                 if (c) {
                     const name = c.name;

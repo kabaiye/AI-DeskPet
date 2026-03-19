@@ -73,9 +73,11 @@
         const closeBtn = document.getElementById('closeBtn');
         const messageEl = document.getElementById('message');
         
+        const { ipcRenderer } = require('electron');
+
         bubble.addEventListener('click', () => {
-            // 点击气泡时的处理逻辑
-            startJourney();
+            ipcRenderer.send('bubble-clicked');
+            window.close();
         });
         
         closeBtn.addEventListener('click', (e) => {
@@ -85,14 +87,13 @@
         
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
-                startJourney();
+                ipcRenderer.send('bubble-clicked');
+                window.close();
             } else if (e.code === 'Escape') {
                 window.close();
             }
         });
         
-        // 监听主进程发送的消息更新
-        const { ipcRenderer } = require('electron');
         ipcRenderer.on('update-bubble-message', (event, message) => {
             messageEl.textContent = message;
         });

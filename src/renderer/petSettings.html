@@ -263,6 +263,58 @@
             text-align: right;
         }
 
+        /* ====== 提醒设置 ====== */
+        .reminder-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(74, 108, 247, 0.06);
+        }
+        .reminder-group:last-child { border-bottom: none; }
+        .reminder-label { font-size: 13px; font-weight: 600; color: #2c5aa0; }
+        .reminder-hint { font-size: 11px; color: #8a9fba; margin-top: 2px; }
+        .reminder-input {
+            width: 72px;
+            padding: 6px 10px;
+            border: 1.5px solid rgba(74, 108, 247, 0.12);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #4a6cf7;
+            text-align: center;
+            background: rgba(255,255,255,0.8);
+            transition: border-color 0.2s;
+        }
+        .reminder-input:focus { outline: none; border-color: #4a6cf7; }
+        .toggle-switch {
+            position: relative;
+            width: 44px; height: 24px;
+            cursor: pointer;
+        }
+        .toggle-switch input { display: none; }
+        .toggle-slider {
+            position: absolute; inset: 0;
+            background: #ccc;
+            border-radius: 24px;
+            transition: 0.3s;
+        }
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 18px; height: 18px;
+            left: 3px; bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background: linear-gradient(135deg, #4a6cf7 0%, #6b8cff 100%);
+        }
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(20px);
+        }
+
         /* ====== 快捷键 ====== */
         .shortcut-item {
             display: flex;
@@ -569,6 +621,48 @@
                                 <span class="transparency-value" id="transparencyVal">100%</span>
                             </div>
                             <div class="api-hint" style="margin-top:8px">调整桌宠窗口的透明度，最低 20%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 提醒设置 -->
+            <div class="section" id="reminderSection">
+                <div class="section-header" onclick="toggleSection('reminderSection')">
+                    <h3>提醒设置</h3>
+                    <span class="section-arrow">▼</span>
+                </div>
+                <div class="section-body">
+                    <div class="section-inner">
+                        <div class="reminder-group">
+                            <div>
+                                <div class="reminder-label">勿扰模式</div>
+                                <div class="reminder-hint">开启后暂停所有主动提醒和碎碎念</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="dndToggle">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="reminder-group">
+                            <div>
+                                <div class="reminder-label">久坐提醒间隔</div>
+                                <div class="reminder-hint">设为 0 则关闭久坐提醒</div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:4px">
+                                <input type="number" class="reminder-input" id="sedentaryInput" min="0" max="240" value="52">
+                                <span style="font-size:12px;color:#8a9fba">分钟</span>
+                            </div>
+                        </div>
+                        <div class="reminder-group">
+                            <div>
+                                <div class="reminder-label">喝水提醒间隔</div>
+                                <div class="reminder-hint">设为 0 则关闭喝水提醒</div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:4px">
+                                <input type="number" class="reminder-input" id="waterInput" min="0" max="240" value="60">
+                                <span style="font-size:12px;color:#8a9fba">分钟</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -918,26 +1012,28 @@
             const keyName = normalizeKeyName(e);
             const combo = mods.length > 0 ? mods.join('+') + '+' + keyName : keyName;
 
-            let conflict = null;
+            let conflictAction = null;
             for (const [a, c] of Object.entries(shortcuts)) {
                 if (a !== recordingAction && c.key === combo) {
-                    conflict = c.description;
+                    conflictAction = a;
                     break;
                 }
+            }
+
+            if (conflictAction) {
+                const oldDesc = shortcuts[conflictAction].description;
+                shortcuts[conflictAction].key = '';
+                const oldEl = document.querySelector(`[data-action="${conflictAction}"]`);
+                if (oldEl) oldEl.textContent = '未设置';
+                showToast(`已将「${oldDesc}」的快捷键清除`);
             }
 
             shortcuts[recordingAction].key = combo;
             el.textContent = combo;
             el.classList.remove('recording');
-
-            if (conflict) {
-                el.classList.add('conflict');
-                showToast(`与「${conflict}」冲突`, true);
-            } else {
-                el.classList.add('success');
-                setTimeout(() => el.classList.remove('success'), 1000);
-                saveShortcuts();
-            }
+            el.classList.add('success');
+            setTimeout(() => el.classList.remove('success'), 1000);
+            saveShortcuts();
             recordingAction = null;
             enableShortcuts();
         });
@@ -966,32 +1062,51 @@
         });
 
         // ====== 加载 & 保存 ======
+        const dndToggle = document.getElementById('dndToggle');
+        const sedentaryInput = document.getElementById('sedentaryInput');
+        const waterInput = document.getElementById('waterInput');
+
         async function loadSettings() {
             await loadCharacterConfig();
             await loadCharacterList();
             await loadShortcuts();
             await loadTransparency();
+
+            petNameInput.value = DEFAULT_NAME;
+            petCharacterInput.value = DEFAULT_CHARACTER;
+
             const s = await ipcRenderer.invoke('load-settings');
             if (s) {
                 apiKeyInput.value = s.apiKey || '';
-                petNameInput.value = s.petName || DEFAULT_NAME;
-                petCharacterInput.value = s.petCharacter || DEFAULT_CHARACTER;
+                dndToggle.checked = !!s.doNotDisturb;
+                sedentaryInput.value = s.sedentaryMinutes ?? 52;
+                waterInput.value = s.waterMinutes ?? 60;
                 if (!s.apiKey) {
                     document.getElementById('apiSection').classList.add('open');
                 }
-            } else {
-                petNameInput.value = DEFAULT_NAME;
-                petCharacterInput.value = DEFAULT_CHARACTER;
             }
         }
 
-        document.getElementById('saveBtn').addEventListener('click', () => {
-            const settings = {
+        function collectSettings() {
+            return {
                 apiKey: apiKeyInput.value.trim(),
+                doNotDisturb: dndToggle.checked,
+                sedentaryMinutes: Math.max(0, parseInt(sedentaryInput.value) || 0),
+                waterMinutes: Math.max(0, parseInt(waterInput.value) || 0)
+            };
+        }
+
+        dndToggle.addEventListener('change', () => {
+            ipcRenderer.send('save-settings', collectSettings());
+            showToast(dndToggle.checked ? '勿扰模式已开启' : '勿扰模式已关闭');
+        });
+
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            ipcRenderer.send('save-settings', collectSettings());
+            ipcRenderer.send('pet-settings-updated', {
                 petName: petNameInput.value.trim() || DEFAULT_NAME,
                 petCharacter: petCharacterInput.value.trim() || DEFAULT_CHARACTER
-            };
-            ipcRenderer.send('save-settings', settings);
+            });
             saveShortcuts();
             showToast('设置已保存！');
         });
