@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>XiaoHeiCat - 让小黑做你的上班搭子</title>
+    <title>XiaoHeiCat</title>
     <style>
         * {
             margin: 0;
@@ -184,16 +184,14 @@
 
     <div class="main-container">
         <div class="title-section">
-            <img class="logo" src="../assets/imgs/罗小黑的生活/pet.gif" alt="小黑" />
+            <img class="logo" id="mainLogo" src="" alt="桌宠" />
             <div class="title-content">
-                <h1>XiaoHeiCat</h1>
-                <p class="subtitle">让小黑做你的上班搭子 ✨</p>
+                <h1 id="mainTitle">XiaoHeiCat</h1>
+                <p class="subtitle" id="mainSubtitle"></p>
             </div>
         </div>
 
-        <div class="status-indicator">
-            ✨ 小黑已上线，准备陪伴你的每一天！
-        </div>
+        <div class="status-indicator" id="mainStatus"></div>
 
         <div class="shortcut-card">
             <h3>⌨️ 快捷键</h3>
@@ -207,11 +205,11 @@
             </div>
             <div class="shortcut-row">
                 <span class="shortcut-key">Alt+F3</span>
-                <span class="shortcut-label">戳一戳 <span class="desc">和小黑互动，获取随机回应</span></span>
+                <span class="shortcut-label" id="pokeLabel">戳一戳 <span class="desc">和桌宠互动，获取随机回应</span></span>
             </div>
             <div class="shortcut-row">
                 <span class="shortcut-key">Ctrl+H</span>
-                <span class="shortcut-label">显示/隐藏 <span class="desc">切换小黑的显示状态</span></span>
+                <span class="shortcut-label" id="toggleLabel">显示/隐藏 <span class="desc">切换桌宠的显示状态</span></span>
             </div>
             <div class="shortcut-row">
                 <span class="shortcut-key">Ctrl+T</span>
@@ -227,11 +225,11 @@
             <h3>🐾 交互方式</h3>
             <div class="shortcut-row">
                 <span class="shortcut-key">点击</span>
-                <span class="shortcut-label">点击小黑触发"戳一戳"，连续点击有不同反应</span>
+                <span class="shortcut-label" id="clickLabel">点击桌宠触发"戳一戳"，连续点击有不同反应</span>
             </div>
             <div class="shortcut-row">
                 <span class="shortcut-key">拖拽</span>
-                <span class="shortcut-label">按住小黑拖动到屏幕任意位置</span>
+                <span class="shortcut-label" id="dragLabel">按住桌宠拖动到屏幕任意位置</span>
             </div>
             <div class="shortcut-row">
                 <span class="shortcut-key">右键</span>
@@ -244,7 +242,35 @@
 
     <script>
         const { ipcRenderer } = require('electron');
-        console.log('XiaoHeiCat界面已加载');
+
+        (async function initMainPage() {
+            try {
+                const c = await ipcRenderer.invoke('get-character-config');
+                if (c) {
+                    const name = c.name;
+                    const baseDir = c.assets.baseDir;
+                    const defaultImg = c.assets.defaultImage;
+                    const ab = c.assetsBasePath;
+                    document.getElementById('mainLogo').src = ab ? `file:///${ab}/${baseDir}/${defaultImg}` : `../assets/imgs/${baseDir}/${defaultImg}`;
+                    document.getElementById('mainLogo').alt = name;
+                    document.getElementById('mainTitle').textContent = c.displayName;
+                    document.getElementById('mainSubtitle').textContent = c.subtitle;
+                    document.getElementById('mainStatus').textContent = c.statusOnline;
+                    document.title = `${c.displayName} - ${c.subtitle.replace(/\s*✨\s*$/, '')}`;
+
+                    const pokeLabel = document.getElementById('pokeLabel');
+                    if (pokeLabel) pokeLabel.innerHTML = `戳一戳 <span class="desc">和${name}互动，获取随机回应</span>`;
+                    const toggleLabel = document.getElementById('toggleLabel');
+                    if (toggleLabel) toggleLabel.innerHTML = `显示/隐藏 <span class="desc">切换${name}的显示状态</span>`;
+                    const clickLabel = document.getElementById('clickLabel');
+                    if (clickLabel) clickLabel.textContent = `点击${name}触发"戳一戳"，连续点击有不同反应`;
+                    const dragLabel = document.getElementById('dragLabel');
+                    if (dragLabel) dragLabel.textContent = `按住${name}拖动到屏幕任意位置`;
+                }
+            } catch (e) {
+                console.error('Failed to load character config:', e);
+            }
+        })();
 
         document.addEventListener('DOMContentLoaded', () => {
             const rows = document.querySelectorAll('.shortcut-row');

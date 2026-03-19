@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>创建角色</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #e8f4f8 0%, #f0f8ff 50%, #e6f7ff 100%);
+    color: #2c5aa0;
+    height: 100vh;
+    overflow: hidden;
+    border-radius: 10px;
+    border: 1px solid rgba(74, 108, 247, 0.1);
+    box-shadow: 0 4px 30px rgba(74, 108, 247, 0.15);
+    user-select: none;
+}
+
+.container {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    border-radius: 10px; overflow: hidden;
+}
+
+.header {
+    background: linear-gradient(135deg, #4a6cf7 0%, #6b8cff 100%);
+    color: white;
+    padding: 14px 20px;
+    display: flex; justify-content: space-between; align-items: center;
+    -webkit-app-region: drag;
+    box-shadow: 0 2px 10px rgba(74, 108, 247, 0.2);
+    flex-shrink: 0;
+}
+.header h1 { font-size: 17px; font-weight: 600; }
+
+.close-btn {
+    width: 28px; height: 28px;
+    background: rgba(255,255,255,0.2); border: none; border-radius: 50%;
+    color: white; font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-app-region: no-drag;
+    transition: all 0.2s;
+}
+.close-btn:hover { background: rgba(255,255,255,0.3); transform: scale(1.1); }
+
+.steps-nav {
+    display: flex; padding: 12px 16px 0; gap: 4px; flex-shrink: 0;
+    -webkit-app-region: no-drag;
+}
+.step-tab {
+    flex: 1; padding: 8px 4px; text-align: center;
+    font-size: 12px; font-weight: 600; color: #8a9fba;
+    border-bottom: 3px solid transparent;
+    cursor: pointer; transition: all 0.2s;
+    border-radius: 6px 6px 0 0;
+}
+.step-tab:hover { color: #4a6cf7; background: rgba(74,108,247,0.04); }
+.step-tab.active { color: #4a6cf7; border-bottom-color: #4a6cf7; background: rgba(74,108,247,0.06); }
+.step-tab .num {
+    display: inline-block; width: 20px; height: 20px; line-height: 20px;
+    border-radius: 50%; background: rgba(74,108,247,0.1);
+    font-size: 11px; margin-bottom: 2px;
+}
+.step-tab.active .num { background: #4a6cf7; color: white; }
+.step-tab .label { display: block; margin-top: 2px; }
+
+.content { flex: 1; overflow-y: auto; padding: 16px; -webkit-app-region: no-drag; }
+.step-panel { display: none; }
+.step-panel.active { display: block; }
+
+.section {
+    background: rgba(255,255,255,0.9); backdrop-filter: blur(10px);
+    border-radius: 14px; margin-bottom: 14px;
+    border: 1.5px solid rgba(74,108,247,0.06);
+    box-shadow: 0 3px 14px rgba(74,108,247,0.07);
+    padding: 16px 18px;
+}
+.section h3 {
+    font-size: 14px; font-weight: 600; color: #2c5aa0;
+    margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+}
+.section .hint { font-size: 11.5px; color: #8a9fba; margin: -8px 0 12px; line-height: 1.5; }
+
+.form-group { margin-bottom: 14px; }
+.form-group:last-child { margin-bottom: 0; }
+.form-group label {
+    display: block; margin-bottom: 5px;
+    color: #2c5aa0; font-weight: 600; font-size: 13px;
+}
+.form-group label .req { color: #f56565; margin-left: 2px; }
+.form-group .sub-hint { font-size: 11px; color: #a0b0c0; margin-bottom: 5px; }
+
+.form-group input, .form-group textarea {
+    width: 100%; padding: 9px 12px;
+    border: 1.5px solid rgba(74,108,247,0.12); border-radius: 9px;
+    font-size: 13px; background: rgba(255,255,255,0.8);
+    font-family: inherit; color: #2c5aa0; transition: all 0.2s;
+}
+.form-group input:focus, .form-group textarea:focus {
+    outline: none; border-color: #4a6cf7;
+    box-shadow: 0 0 0 3px rgba(74,108,247,0.08);
+}
+.form-group textarea { resize: vertical; min-height: 70px; }
+.form-group textarea.tall { min-height: 120px; }
+.form-group textarea.short { min-height: 50px; }
+
+.form-row { display: flex; gap: 12px; }
+.form-row .form-group { flex: 1; }
+
+/* File upload */
+.file-pick-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.file-pick-btn {
+    padding: 7px 14px; border: 1.5px solid rgba(74,108,247,0.2);
+    border-radius: 8px; background: rgba(255,255,255,0.8); color: #4a6cf7;
+    font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    transition: all 0.2s; flex-shrink: 0;
+}
+.file-pick-btn:hover { background: rgba(74,108,247,0.08); border-color: #4a6cf7; }
+.file-pick-name { font-size: 12px; color: #8a9fba; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-pick-preview {
+    width: 48px; height: 48px; border-radius: 8px; border: 1.5px solid rgba(74,108,247,0.1);
+    object-fit: contain; background: #f8faff; flex-shrink: 0; display: none;
+}
+.file-pick-preview.has-img { display: block; }
+
+.emotion-list { display: flex; flex-direction: column; gap: 8px; }
+.emotion-entry {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(74,108,247,0.03); border-radius: 10px; padding: 8px 10px;
+}
+.emotion-entry .em-name-input {
+    width: 90px; padding: 5px 8px; border: 1.5px solid rgba(74,108,247,0.12);
+    border-radius: 7px; font-size: 12px; font-weight: 600; color: #2c5aa0;
+    background: rgba(255,255,255,0.8); flex-shrink: 0;
+}
+.emotion-entry .em-name-input:focus { outline: none; border-color: #4a6cf7; }
+.emotion-entry .file-pick-btn { padding: 5px 10px; font-size: 11px; }
+.emotion-entry .file-pick-preview { width: 36px; height: 36px; border-radius: 6px; }
+.emotion-entry .file-pick-name { font-size: 11px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.emotion-entry .em-remove {
+    width: 22px; height: 22px; border: none; border-radius: 50%;
+    background: rgba(245,101,101,0.1); color: #f56565; font-size: 14px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.2s;
+}
+.emotion-entry .em-remove:hover { background: rgba(245,101,101,0.2); }
+
+.batch-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+.batch-btn {
+    padding: 8px 16px; border: 1.5px dashed rgba(74,108,247,0.25);
+    border-radius: 8px; background: transparent; color: #4a6cf7;
+    font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.batch-btn:hover { background: rgba(74,108,247,0.06); border-style: solid; }
+
+/* AI generate */
+.ai-gen-box {
+    background: linear-gradient(135deg, rgba(74,108,247,0.06), rgba(107,140,255,0.06));
+    border: 1.5px solid rgba(74,108,247,0.15); border-radius: 12px;
+    padding: 20px; text-align: center; margin-bottom: 14px;
+}
+.ai-gen-box .desc { font-size: 12.5px; color: #6b8cff; margin-bottom: 14px; line-height: 1.6; }
+.ai-gen-btn {
+    padding: 12px 32px; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, #4a6cf7 0%, #6b8cff 100%); color: white;
+    font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.ai-gen-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(74,108,247,0.3); }
+.ai-gen-btn:disabled {
+    opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none;
+}
+.ai-gen-btn .spinner {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3); border-top-color: white;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+    vertical-align: middle; margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.ai-result { display: none; }
+.ai-result.show { display: block; }
+.ai-result .result-tag {
+    display: inline-block; padding: 3px 10px; border-radius: 12px;
+    background: rgba(72,187,120,0.1); color: #48bb78;
+    font-size: 11px; font-weight: 600; margin-bottom: 10px;
+}
+
+.preset-group {
+    background: rgba(74,108,247,0.03); border-radius: 10px;
+    padding: 10px 12px; margin-bottom: 8px;
+}
+.preset-group .preset-title { font-size: 12px; font-weight: 600; color: #4a6cf7; margin-bottom: 6px; }
+
+/* Bottom */
+.actions { display: flex; gap: 12px; padding: 0 16px 16px; flex-shrink: 0; }
+.btn {
+    flex: 1; padding: 11px 0; border: none; border-radius: 10px;
+    font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.btn-primary { background: linear-gradient(135deg, #4a6cf7 0%, #6b8cff 100%); color: white; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(74,108,247,0.3); }
+.btn-secondary {
+    background: rgba(255,255,255,0.8); color: #2c5aa0;
+    border: 1.5px solid rgba(74,108,247,0.12);
+}
+.btn-secondary:hover { border-color: #4a6cf7; }
+
+.toast {
+    text-align: center; padding: 0 16px; font-size: 12px;
+    color: #48bb78; min-height: 20px; line-height: 20px;
+    transition: opacity 0.3s; opacity: 0;
+}
+.toast.show { opacity: 1; }
+.toast.error { color: #f56565; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(74,108,247,0.2); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>✨ 创建新角色</h1>
+        <button class="close-btn" onclick="window.close()">×</button>
+    </div>
+
+    <div class="steps-nav">
+        <div class="step-tab active" data-step="0"><span class="num">1</span><span class="label">角色设定</span></div>
+        <div class="step-tab" data-step="1"><span class="num">2</span><span class="label">素材上传</span></div>
+        <div class="step-tab" data-step="2"><span class="num">3</span><span class="label">AI增强</span></div>
+    </div>
+
+    <div class="content">
+        <!-- Step 0: 角色设定 -->
+        <div class="step-panel active" data-step="0">
+            <div class="section">
+                <h3>🎭 角色设定</h3>
+                <p class="hint">只需填写角色名称和性格描述，其余信息自动生成。创建后可通过编辑 JSON 配置文件进一步定制。</p>
+                <div class="form-group">
+                    <label>角色名称 <span class="req">*</span></label>
+                    <div class="sub-hint">角色在对话中使用的名字，如「小黑」「熊」</div>
+                    <input type="text" id="c_name" placeholder="给角色起个名字…" maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label>默认性格描述 <span class="req">*</span></label>
+                    <div class="sub-hint">角色的核心身份设定，是所有AI回复的基础。描述身份、性格特点、说话习惯等。</div>
+                    <textarea id="c_personality" class="tall" placeholder="例如：你是小白，一只温柔优雅的小猫咪桌宠。你性格温柔善良，说话轻声细语，喜欢用「喵」结尾。你对主人非常关心，会在主人忙碌时安静陪伴，偶尔撒个娇。你害怕打雷，喜欢晒太阳和吃小鱼干。"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 1: 素材上传 -->
+        <div class="step-panel" data-step="1">
+            <div class="section">
+                <h3>🖼️ 基础图片</h3>
+                <p class="hint">上传角色的显示图片。点击「选择文件」从电脑中选取 GIF 或 PNG。</p>
+                <div class="form-group">
+                    <label>默认图片 <span class="req">*</span></label>
+                    <div class="sub-hint">桌宠的主形象图片</div>
+                    <div class="file-pick-row">
+                        <img class="file-pick-preview" id="preview_default">
+                        <button class="file-pick-btn" onclick="pickFile('default')">选择文件</button>
+                        <span class="file-pick-name" id="fname_default">未选择</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>夜间待机图片</label>
+                    <div class="sub-hint">晚上8点后显示的图片，不选则使用默认图片</div>
+                    <div class="file-pick-row">
+                        <img class="file-pick-preview" id="preview_night">
+                        <button class="file-pick-btn" onclick="pickFile('night')">选择文件</button>
+                        <span class="file-pick-name" id="fname_night">未选择（使用默认图片）</span>
+                    </div>
+                </div>
+            </div>
+            <div class="section">
+                <h3>😸 表情GIF</h3>
+                <p class="hint">每个表情需要一个名称和对应的 GIF 图片。名称不能包含特殊字符。可选填。</p>
+                <div class="batch-actions">
+                    <button class="batch-btn" onclick="addEmotionEntry()">➕ 添加表情</button>
+                    <button class="batch-btn" onclick="batchImportEmotions()">📂 批量导入GIF</button>
+                    <button class="batch-btn" onclick="clearAllEmotions()">🗑️ 清空全部</button>
+                </div>
+                <div class="emotion-list" id="emotionList"></div>
+            </div>
+        </div>
+
+        <!-- Step 2: AI增强 -->
+        <div class="step-panel" data-step="2">
+            <div class="ai-gen-box">
+                <div class="desc">根据角色名称和性格描述，AI 将自动生成 4 组性格预设和 7 种场景下的回复风格。<br>点击下方按钮开始生成，生成后可以手动修改。</div>
+                <button class="ai-gen-btn" id="aiGenBtn" onclick="generateWithAI()">🤖 AI 自动生成</button>
+            </div>
+
+            <div class="ai-result" id="aiResult">
+                <div class="section">
+                    <h3>🎨 性格预设 <span class="result-tag">AI 生成</span></h3>
+                    <p class="hint">4个性格变体，用户可在桌宠设置中切换。</p>
+                    <div class="preset-group">
+                        <div class="preset-title">预设1</div>
+                        <div class="form-row">
+                            <div class="form-group" style="flex:0.35"><label>标签</label><input type="text" id="c_preset1_label"></div>
+                            <div class="form-group" style="flex:1"><label>描述</label><input type="text" id="c_preset1_prompt"></div>
+                        </div>
+                    </div>
+                    <div class="preset-group">
+                        <div class="preset-title">预设2</div>
+                        <div class="form-row">
+                            <div class="form-group" style="flex:0.35"><label>标签</label><input type="text" id="c_preset2_label"></div>
+                            <div class="form-group" style="flex:1"><label>描述</label><input type="text" id="c_preset2_prompt"></div>
+                        </div>
+                    </div>
+                    <div class="preset-group">
+                        <div class="preset-title">预设3</div>
+                        <div class="form-row">
+                            <div class="form-group" style="flex:0.35"><label>标签</label><input type="text" id="c_preset3_label"></div>
+                            <div class="form-group" style="flex:1"><label>描述</label><input type="text" id="c_preset3_prompt"></div>
+                        </div>
+                    </div>
+                    <div class="preset-group">
+                        <div class="preset-title">预设4</div>
+                        <div class="form-row">
+                            <div class="form-group" style="flex:0.35"><label>标签</label><input type="text" id="c_preset4_label"></div>
+                            <div class="form-group" style="flex:1"><label>描述</label><input type="text" id="c_preset4_prompt"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>🤖 AI回复风格 <span class="result-tag">AI 生成</span></h3>
+                    <p class="hint">定义角色在不同场景下的独特语气。功能性规则由程序自动处理。</p>
+                    <div class="form-group"><label>截图反应</label><input type="text" id="c_style_screenshot"></div>
+                    <div class="form-group"><label>聊天风格</label><input type="text" id="c_style_chat"></div>
+                    <div class="form-group"><label>提醒风格</label><input type="text" id="c_style_reminder"></div>
+                    <div class="form-group"><label>打招呼</label><input type="text" id="c_style_greeting"></div>
+                    <div class="form-group"><label>碎碎念</label><input type="text" id="c_style_thought"></div>
+                    <div class="form-group"><label>里程碑感言</label><input type="text" id="c_style_milestone"></div>
+                    <div class="form-group"><label>互动反应</label><input type="text" id="c_style_poke"></div>
+                </div>
+            </div>
+
+            <div class="section" style="text-align:center;color:#8a9fba;font-size:12px;padding:14px">
+                以上内容均可跳过，创建后可通过编辑 <b>characters/{角色ID}.json</b> 文件随时修改。
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <div class="actions">
+        <button class="btn btn-secondary" id="prevBtn">取消</button>
+        <button class="btn btn-primary" id="nextBtn">下一步</button>
+    </div>
+</div>
+
+<script>
+const { ipcRenderer } = require('electron');
+
+let currentStep = 0;
+let isEditMode = false;
+let editOriginalData = null;
+let totalSteps = 3;
+
+const pickedFiles = { default: null, night: null };
+let emotionEntries = [];
+let emotionIdCounter = 0;
+
+const tabs = document.querySelectorAll('.step-tab');
+const panels = document.querySelectorAll('.step-panel');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+
+function goToStep(n) {
+    currentStep = Math.max(0, Math.min(n, totalSteps - 1));
+    tabs.forEach(t => {
+        const step = +t.dataset.step;
+        t.classList.toggle('active', step === currentStep);
+        t.style.display = (step >= totalSteps) ? 'none' : '';
+    });
+    panels.forEach(p => p.classList.toggle('active', +p.dataset.step === currentStep));
+    prevBtn.textContent = currentStep === 0 ? '取消' : '上一步';
+    const lastLabel = isEditMode ? '✅ 保存修改' : '✅ 创建角色';
+    nextBtn.textContent = currentStep === totalSteps - 1 ? lastLabel : '下一步';
+    document.querySelector('.content').scrollTop = 0;
+}
+
+tabs.forEach(t => t.addEventListener('click', () => {
+    const step = +t.dataset.step;
+    if (step < totalSteps) goToStep(step);
+}));
+prevBtn.addEventListener('click', () => {
+    if (currentStep === 0) window.close();
+    else goToStep(currentStep - 1);
+});
+nextBtn.addEventListener('click', () => {
+    if (currentStep === totalSteps - 1) saveCharacter();
+    else {
+        if (currentStep === 0) {
+            if (!v('c_name')) { showToast('请填写角色名称', true); return; }
+            if (!v('c_personality')) { showToast('请填写性格描述', true); return; }
+        }
+        if (currentStep === 1 && !pickedFiles.default) {
+            showToast('请上传默认图片', true); return;
+        }
+        goToStep(currentStep + 1);
+    }
+});
+
+function showToast(msg, isError) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast show ${isError ? 'error' : ''}`;
+    setTimeout(() => { t.className = 'toast'; }, 3000);
+}
+
+function v(id) { return (document.getElementById(id)?.value || '').trim(); }
+
+let aiGeneratedId = '';
+
+function toId(name) {
+    if (aiGeneratedId) return aiGeneratedId;
+    const ascii = name.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    return ascii || 'char_' + Date.now();
+}
+
+// ====== AI Generation ======
+async function generateWithAI() {
+    const name = v('c_name');
+    const personality = v('c_personality');
+    if (!name || !personality) {
+        showToast('请先填写角色名称和性格描述', true);
+        goToStep(0);
+        return;
+    }
+
+    const btn = document.getElementById('aiGenBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>AI 生成中…';
+
+    try {
+        const result = await ipcRenderer.invoke('generate-character-content', { name, personality });
+        if (result.success) {
+            fillAIResult(result.data);
+            document.getElementById('aiResult').classList.add('show');
+            showToast('AI 生成完成！你可以手动调整');
+        } else {
+            showToast(result.error || 'AI 生成失败', true);
+            fillDefaults();
+            document.getElementById('aiResult').classList.add('show');
+        }
+    } catch (err) {
+        showToast('AI 生成失败：' + err.message, true);
+        fillDefaults();
+        document.getElementById('aiResult').classList.add('show');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '🤖 重新生成';
+}
+
+function fillAIResult(data) {
+    if (data.id) {
+        aiGeneratedId = data.id.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    }
+    if (data.presets) {
+        const keys = Object.keys(data.presets);
+        keys.forEach((k, i) => {
+            const idx = i + 1;
+            if (idx > 4) return;
+            const el_label = document.getElementById(`c_preset${idx}_label`);
+            const el_prompt = document.getElementById(`c_preset${idx}_prompt`);
+            if (el_label) el_label.value = data.presets[k].label || '';
+            if (el_prompt) el_prompt.value = data.presets[k].prompt || '';
+        });
+    }
+    if (data.style) {
+        for (const [k, val] of Object.entries(data.style)) {
+            const el = document.getElementById(`c_style_${k}`);
+            if (el) el.value = val;
+        }
+    }
+}
+
+function fillDefaults() {
+    const name = v('c_name') || '角色';
+    const defs = [
+        ['c_preset1_label', '活泼可爱'], ['c_preset1_prompt', `${name}性格活泼可爱，喜欢卖萌撒娇`],
+        ['c_preset2_label', '温柔体贴'], ['c_preset2_prompt', `${name}性格温柔体贴，善解人意`],
+        ['c_preset3_label', '调皮捣蛋'], ['c_preset3_prompt', `${name}性格调皮，喜欢搞怪逗乐`],
+        ['c_preset4_label', '高冷傲娇'], ['c_preset4_prompt', `${name}表面高冷，内心温暖`],
+        ['c_style_screenshot', '根据截图内容给出有趣的回应'],
+        ['c_style_chat', '用轻松有趣的语气回复，像朋友聊天一样'],
+        ['c_style_reminder', '用幽默或关心的语气提醒'],
+        ['c_style_greeting', '说一句自然、温暖的话'],
+        ['c_style_thought', '像自言自语一样自然，要有趣'],
+        ['c_style_milestone', '说一句温馨的纪念感言'],
+        ['c_style_poke', '可以撒娇、调皮、假装生气、卖萌'],
+    ];
+    defs.forEach(([id, val]) => {
+        const el = document.getElementById(id);
+        if (el && !el.value) el.value = val;
+    });
+}
+
+function _em(emotionNames, index) {
+    if (emotionNames.length === 0) return '默认';
+    return emotionNames[index % emotionNames.length];
+}
+
+function _buildFallbacks(ems) {
+    return {
+        screenshot: ['这看起来很有趣！', '哇，这个不错哦！', '好有意思的内容！'],
+        reminder: ['{{name}}{{timeGreeting}}！工作累了吗？休息一下吧～✨', '{{name}}觉得你工作很认真呢！继续保持！💪', '{{name}}提醒你该放松一下啦！🌬️'],
+        waterReminder: ['{{name}}提醒你该喝水啦！💧', '{{name}}说：主人，来杯水吧～☕'],
+        inactivityReminder: ['{{name}}提醒你：起来走两步吧！🏃‍♂️', '{{name}}说：该活动一下啦！💪'],
+        chat: ['你说的好有趣！{{name}}也想知道更多！', '嗯嗯！{{name}}在认真听你说话呢～'],
+        chatError: '{{name}}脑袋转不过来了，等下再聊好不好～',
+        greetings: {
+            lateNight: { message: '{{name}}打了个哈欠…主人，太晚啦，早点休息嘛～', emotion: _em(ems, 0) },
+            earlyMorning: { message: '早安！{{name}}已经准备好陪你啦～', emotion: _em(ems, 1) },
+            lunchTime: { message: '{{name}}的肚子在叫了…主人吃饭了吗？', emotion: _em(ems, 2) },
+            fridayAfternoon: { message: '周五下午！{{name}}已经在收拾行李准备出发了！', emotion: _em(ems, 1) },
+            mondayMorning: { message: '又是周一…{{name}}替你打了个哈欠', emotion: _em(ems, 0) },
+            default: { message: '{{name}}探出头看了看你，嘿嘿～', emotion: _em(ems, 3) }
+        },
+        thoughts: [
+            { message: '{{name}}刚才做了个有趣的白日梦…', emotion: _em(ems, 0) },
+            { message: '{{name}}觉得，能陪在你身边就是最棒的事', emotion: _em(ems, 2) },
+            { message: '你知道吗？{{name}}刚才偷偷看了你好几次', emotion: _em(ems, 3) }
+        ],
+        milestone: '{{name}}和你已经在一起{{days}}天啦！今后也要一直在一起哦～',
+        milestoneFallback: '{{name}}和你已经在一起{{days}}天啦！今后也请多多关照～',
+        parseFallback: '{{name}}在想你～',
+        journeyStatus: '你的{{name}}正在旅行中！🌍'
+    };
+}
+
+function _buildInteractions(ems) {
+    return {
+        triggers: [
+            { action: '戳一戳~', scenario: '主人戳了你一下' },
+            { action: '拍一拍~', scenario: '主人拍了拍你的头' },
+            { action: '喂！', scenario: '主人在叫你' },
+            { action: '{{name}}{{name}}！', scenario: '主人在喊你的名字' },
+            { action: '在干嘛呀？', scenario: '主人好奇你在做什么' },
+            { action: '摸摸头~', scenario: '主人温柔地摸了摸你的头' },
+            { action: '揉肚子~', scenario: '主人揉了揉你的肚子' },
+            { action: '挠下巴~', scenario: '主人挠了挠你的下巴' },
+            { action: '抱抱！', scenario: '主人想要抱你' },
+            { action: '你最可爱了~', scenario: '主人夸你可爱' }
+        ],
+        escalation: [
+            { min: 2, max: 3, extra: '，你有点痒但觉得好玩' },
+            { min: 4, max: 6, extra: '，你有点不耐烦但又很享受被关注' },
+            { min: 7, max: null, extra: '，你要炸毛了！但内心深处还是开心的' }
+        ],
+        pokeFallbacks: {
+            '戳一戳~': [
+                { message: '喵？{{name}}被戳醒了！', emotion: _em(ems, 3) },
+                { message: '嘿嘿，痒痒的～', emotion: _em(ems, 1) }
+            ],
+            '摸摸头~': [
+                { message: '好舒服～', emotion: _em(ems, 1) },
+                { message: '{{name}}把头伸过来了～', emotion: _em(ems, 0) }
+            ],
+            '你最可爱了~': [
+                { message: '那当然！嘿嘿嘿～', emotion: _em(ems, 1) },
+                { message: '{{name}}知道啦，主人也很可爱！', emotion: _em(ems, 0) }
+            ]
+        },
+        pokeOverload: [
+            { message: '{{name}}已经被你骚扰{{count}}次了…', emotion: _em(ems, 0) },
+            { message: '第{{count}}次了！你在破纪录吗？！', emotion: _em(ems, 4) }
+        ],
+        pokeGeneric: [
+            { message: '{{name}}看着你～', emotion: _em(ems, 3) },
+            { message: '{{name}}歪了歪头', emotion: _em(ems, 2) },
+            { message: '嗯？怎么了？', emotion: _em(ems, 5) }
+        ]
+    };
+}
+
+// ====== Save ======
+async function saveCharacter() {
+    const name = v('c_name');
+    if (!name) { showToast('请填写角色名称', true); goToStep(0); return; }
+    if (!v('c_personality')) { showToast('请填写性格描述', true); goToStep(0); return; }
+    if (!pickedFiles.default) { showToast('请上传默认图片', true); goToStep(1); return; }
+
+    const id = isEditMode ? editOriginalData.id : toId(name);
+    const baseDir = isEditMode ? (editOriginalData.assets?.baseDir || id) : id;
+    const defaultImg = pickedFiles.default.name;
+    const nightImg = pickedFiles.night ? pickedFiles.night.name : defaultImg;
+
+    const filesToCopy = [];
+    if (pickedFiles.default && !pickedFiles.default._existing) {
+        filesToCopy.push({ name: defaultImg, sourcePath: pickedFiles.default.path });
+    }
+    if (pickedFiles.night && !pickedFiles.night._existing) {
+        filesToCopy.push({ name: nightImg, sourcePath: pickedFiles.night.path });
+    }
+
+    const emotionMap = {};
+    const emotionNames = [];
+    for (const entry of emotionEntries) {
+        const emName = entry.name.trim();
+        if (!emName || !entry.file) continue;
+        emotionMap[emName] = entry.file.name;
+        emotionNames.push(emName);
+        if (!entry.file._existing) {
+            filesToCopy.push({ name: entry.file.name, sourcePath: entry.file.path });
+        }
+    }
+
+    showToast(isEditMode ? '正在保存…' : '正在创建角色…');
+    if (filesToCopy.length > 0) {
+        const copyResult = await ipcRenderer.invoke('copy-asset-files', { targetDir: baseDir, files: filesToCopy });
+        if (!copyResult.success) { showToast('素材复制失败：' + copyResult.error, true); return; }
+    }
+
+    const character = {
+        _配置说明: "角色配置文件 - 修改此文件可自定义桌宠角色。以 _ 开头的字段为提示，程序不读取。",
+        id, name,
+        displayName: name,
+        subtitle: `让${name}做你的上班搭子 ✨`,
+        statusOnline: `✨ ${name}已上线，准备陪伴你的每一天！`,
+        defaultStatusMessage: '今天也要开开心心的哦！✨',
+        errorFallbackMessage: `${name}思考中…`,
+
+        personality: { default: v('c_personality'), presets: {} },
+        style: {
+            screenshot: v('c_style_screenshot') || '根据截图内容给出有趣的回应',
+            chat: v('c_style_chat') || '用轻松有趣的语气回复，像朋友聊天一样',
+            reminder: v('c_style_reminder') || '用幽默或关心的语气提醒',
+            greeting: v('c_style_greeting') || '说一句自然、温暖的话，像好朋友一样',
+            thought: v('c_style_thought') || '像自言自语一样自然，要有趣、有个性',
+            milestone: v('c_style_milestone') || '说一句温馨的纪念感言',
+            poke: v('c_style_poke') || '可以撒娇、调皮、假装生气、卖萌'
+        },
+        assets: {
+            baseDir, defaultImage: defaultImg, idleNightImage: nightImg,
+            emotions: emotionMap,
+            waterReminder: {
+                mainImage: defaultImg, successImage: defaultImg,
+                emotionGradient: [
+                    { maxClicks: 2, image: defaultImg }, { maxClicks: 4, image: defaultImg },
+                    { maxClicks: 6, image: defaultImg }, { maxClicks: 8, image: defaultImg },
+                    { maxClicks: 9, image: defaultImg }, { maxClicks: null, image: defaultImg }
+                ]
+            }
+        },
+        emotions: emotionNames,
+        fallbacks: _buildFallbacks(emotionNames),
+        interactions: _buildInteractions(emotionNames),
+        thoughtTopics: ['分享一个你做的有趣的梦', '说说你对某种食物的想法', '聊一个你的小爱好或小习惯', '表达一个突然冒出来的奇思妙想', '对主人说一句你平时不好意思说的话'],
+        waterReminderUI: {
+            defaultQuestion: '该喝水啦！', questionWithName: '该喝水啦，{{username}}！',
+            noTexts: ['？你认真的吗…', '要不再想想？', '不许选这个！', '我会很伤心…', '不行:(', '再给个面子嘛~', '真的不行！', '拜托啦~', '喝口再走～', '就一小口！'],
+            finalQuestion: '快喝水！', finalYesText: '复活', successText: '喝水最健康！💧',
+            yesButtonText: '好，喝水', noButtonText: '不喝', dismissText: '退下吧'
+        },
+        ui: {
+            chatTitle: '和{{name}}聊天', chatWelcome: '开始和{{name}}聊天吧～',
+            chatCleared: '聊天记录已清空，重新开始吧～', chatOnlineStatus: '在线 · 随时陪你聊天',
+            quickChatPlaceholder: '和{{name}}说点什么…', screenshotPlaceholder: '想问{{name}}什么？直接回车跳过',
+            contextMenuChat: '和{{name}}聊天', pokePetLabel: '戳一戳{{name}}',
+            pokePetDescription: '戳一戳{{name}}，触发互动'
+        }
+    };
+
+    // Build presets from form
+    const presetKeys = (isEditMode && editOriginalData?.personality?.presets)
+        ? Object.keys(editOriginalData.personality.presets)
+        : ['lively', 'gentle', 'naughty', 'tsundere'];
+    for (let i = 1; i <= 4; i++) {
+        const label = v(`c_preset${i}_label`);
+        const prompt = v(`c_preset${i}_prompt`);
+        const key = presetKeys[i - 1] || `preset_${i}`;
+        if (label && prompt) character.personality.presets[key] = { label, prompt };
+    }
+
+    if (isEditMode && editOriginalData) {
+        const merged = Object.assign({}, editOriginalData, character);
+        merged.id = editOriginalData.id;
+        merged.personality = character.personality;
+        merged.style = character.style;
+        merged.assets = Object.assign({}, editOriginalData.assets, character.assets);
+        merged.emotions = character.emotions;
+        if (editOriginalData.fallbacks) merged.fallbacks = editOriginalData.fallbacks;
+        if (editOriginalData.interactions) merged.interactions = editOriginalData.interactions;
+        if (editOriginalData.thoughtTopics) merged.thoughtTopics = editOriginalData.thoughtTopics;
+        if (editOriginalData.waterReminderUI) merged.waterReminderUI = editOriginalData.waterReminderUI;
+        if (editOriginalData.ui) merged.ui = editOriginalData.ui;
+
+        const result = await ipcRenderer.invoke('update-character', merged);
+        if (result.success) {
+            showToast(`角色「${name}」已保存！`);
+            setTimeout(() => window.close(), 1500);
+        } else {
+            showToast(result.error || '保存失败', true);
+        }
+    } else {
+        const result = await ipcRenderer.invoke('save-new-character', character);
+        if (result.success) {
+            showToast(`角色「${name}」创建成功！`);
+            setTimeout(() => window.close(), 1500);
+        } else {
+            showToast(result.error || '保存失败', true);
+        }
+    }
+}
+
+// ====== File picking ======
+async function pickFile(key) {
+    const result = await ipcRenderer.invoke('select-gif-files');
+    if (result.canceled || !result.files.length) return;
+    const f = result.files[0];
+    pickedFiles[key] = f;
+    const preview = document.getElementById(`preview_${key}`);
+    preview.src = `file:///${f.path.replace(/\\/g, '/')}`;
+    preview.classList.add('has-img');
+    document.getElementById(`fname_${key}`).textContent = f.name;
+}
+
+function sanitizeEmotionName(val) {
+    return val.replace(/[\\/"'\n\r\t{}[\]:,]/g, '');
+}
+
+function addEmotionEntry(preset) {
+    const eid = emotionIdCounter++;
+    const entry = { id: eid, name: preset?.name || '', file: preset?.file || null };
+    emotionEntries.push(entry);
+    renderEmotionList();
+    return eid;
+}
+
+function removeEmotionEntry(eid) {
+    emotionEntries = emotionEntries.filter(e => e.id !== eid);
+    renderEmotionList();
+}
+
+async function pickEmotionFileFor(eid) {
+    const result = await ipcRenderer.invoke('select-gif-files');
+    if (result.canceled || !result.files.length) return;
+    const entry = emotionEntries.find(e => e.id === eid);
+    if (!entry) return;
+    entry.file = result.files[0];
+    if (!entry.name) {
+        entry.name = result.files[0].name.replace(/\.[^.]+$/, '');
+    }
+    renderEmotionList();
+}
+
+function onEmotionNameChange(eid, val) {
+    const entry = emotionEntries.find(e => e.id === eid);
+    if (entry) entry.name = sanitizeEmotionName(val);
+}
+
+function renderEmotionList() {
+    const container = document.getElementById('emotionList');
+    container.innerHTML = emotionEntries.map(entry => {
+        const hasFile = !!entry.file;
+        const imgSrc = hasFile ? `file:///${entry.file.path.replace(/\\/g, '/')}` : '';
+        const fname = hasFile ? entry.file.name : '未选择';
+        return `<div class="emotion-entry" data-eid="${entry.id}">
+            <input class="em-name-input" type="text" value="${entry.name}" placeholder="表情名称"
+                maxlength="15" oninput="onEmotionNameChange(${entry.id}, this.value)">
+            <img class="file-pick-preview ${hasFile ? 'has-img' : ''}" src="${imgSrc}">
+            <button class="file-pick-btn" onclick="pickEmotionFileFor(${entry.id})">选择</button>
+            <span class="file-pick-name">${fname}</span>
+            <button class="em-remove" onclick="removeEmotionEntry(${entry.id})">×</button>
+        </div>`;
+    }).join('');
+}
+
+async function batchImportEmotions() {
+    const result = await ipcRenderer.invoke('select-gif-files');
+    if (result.canceled || !result.files.length) return;
+    result.files.forEach(f => {
+        const name = sanitizeEmotionName(f.name.replace(/\.[^.]+$/, ''));
+        const eid = emotionIdCounter++;
+        emotionEntries.push({ id: eid, name, file: f });
+    });
+    renderEmotionList();
+    showToast(`已导入 ${result.files.length} 个表情`);
+}
+
+function clearAllEmotions() {
+    emotionEntries = [];
+    emotionIdCounter = 0;
+    renderEmotionList();
+    showToast('已清空全部表情');
+}
+
+renderEmotionList();
+document.addEventListener('keydown', e => { if (e.key === 'Escape') window.close(); });
+
+async function initEditMode() {
+    const editInfo = await ipcRenderer.invoke('get-edit-character-data');
+    if (!editInfo) { goToStep(0); return; }
+
+    isEditMode = true;
+    editOriginalData = editInfo.charData;
+    const d = editInfo.charData;
+    const assetsBase = editInfo.assetsBase;
+    totalSteps = 2;
+
+    document.querySelector('.header h1').textContent = '✏️ 编辑角色';
+    document.querySelector('[data-step="2"].step-tab').style.display = 'none';
+
+    document.getElementById('c_name').value = d.name || '';
+    document.getElementById('c_personality').value = d.personality?.default || '';
+
+    const aiResult = document.getElementById('aiResult');
+    aiResult.classList.add('show');
+    aiResult.querySelectorAll('.result-tag').forEach(t => t.remove());
+    const step0Panel = document.querySelector('.step-panel[data-step="0"]');
+    step0Panel.appendChild(aiResult);
+
+    if (d.style) {
+        for (const [k, val] of Object.entries(d.style)) {
+            const el = document.getElementById(`c_style_${k}`);
+            if (el) el.value = val;
+        }
+    }
+
+    if (d.personality?.presets) {
+        const keys = Object.keys(d.personality.presets);
+        keys.forEach((k, i) => {
+            const idx = i + 1;
+            if (idx > 4) return;
+            const el_label = document.getElementById(`c_preset${idx}_label`);
+            const el_prompt = document.getElementById(`c_preset${idx}_prompt`);
+            if (el_label) el_label.value = d.personality.presets[k].label || '';
+            if (el_prompt) el_prompt.value = d.personality.presets[k].prompt || '';
+        });
+    }
+
+    if (d.assets) {
+        const baseDir = d.assets.baseDir || '';
+        if (d.assets.defaultImage) {
+            const imgPath = `${assetsBase}/${baseDir}/${d.assets.defaultImage}`;
+            pickedFiles.default = { name: d.assets.defaultImage, path: imgPath, _existing: true };
+            const prev = document.getElementById('preview_default');
+            prev.src = `file:///${imgPath}`;
+            prev.classList.add('has-img');
+            document.getElementById('fname_default').textContent = d.assets.defaultImage;
+        }
+        if (d.assets.idleNightImage && d.assets.idleNightImage !== d.assets.defaultImage) {
+            const imgPath = `${assetsBase}/${baseDir}/${d.assets.idleNightImage}`;
+            pickedFiles.night = { name: d.assets.idleNightImage, path: imgPath, _existing: true };
+            const prev = document.getElementById('preview_night');
+            prev.src = `file:///${imgPath}`;
+            prev.classList.add('has-img');
+            document.getElementById('fname_night').textContent = d.assets.idleNightImage;
+        }
+
+        if (d.assets.emotions) {
+            for (const [emName, emFile] of Object.entries(d.assets.emotions)) {
+                if (emName.startsWith('_')) continue;
+                if (emFile === d.assets.defaultImage) continue;
+                const imgPath = `${assetsBase}/${baseDir}/${emFile}`;
+                const eid = emotionIdCounter++;
+                emotionEntries.push({ id: eid, name: emName, file: { name: emFile, path: imgPath, _existing: true } });
+            }
+            renderEmotionList();
+        }
+    }
+
+    goToStep(0);
+}
+
+initEditMode();
+</script>
+</body>
+</html>

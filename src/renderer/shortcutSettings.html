@@ -287,8 +287,8 @@
                 </div>
                 <div class="shortcut-item">
                     <div class="shortcut-info">
-                        <div class="shortcut-name">戳一戳小黑</div>
-                        <div class="shortcut-description">戳一戳小黑，触发互动</div>
+                        <div class="shortcut-name">戳一戳桌宠</div>
+                        <div class="shortcut-description">戳一戳桌宠，触发互动</div>
                     </div>
                     <div class="shortcut-key" data-action="poke-pet" data-default="Alt+F3">Alt+F3</div>
                 </div>
@@ -343,17 +343,35 @@
     </div>
 
     <script>
-        // 快捷键配置
         const shortcuts = {
             'quick-chat': { key: 'Alt+F1', description: '快捷聊天' },
             'ai-screenshot': { key: 'Alt+F2', description: 'AI区域截图' },
             'water-reminder': { key: '', description: '喝水提醒' },
-            'poke-pet': { key: 'Alt+F3', description: '戳一戳小黑' },
+            'poke-pet': { key: 'Alt+F3', description: '戳一戳桌宠' },
             'open-chat': { key: '', description: '打开聊天' },
             'toggle-pet': { key: 'Ctrl+H', description: '桌宠隐藏/显示' },
             'open-todo': { key: 'Ctrl+T', description: '打开待办' },
             'open-main': { key: 'Ctrl+O', description: '打开主页面' }
         };
+
+        (async function loadCharName() {
+            try {
+                const { ipcRenderer } = require('electron');
+                const c = await ipcRenderer.invoke('get-character-config');
+                if (c && c.ui) {
+                    const pokeLabel = c.ui.pokePetLabel.replace(/\{\{name\}\}/g, c.name);
+                    const pokeDesc = c.ui.pokePetDescription.replace(/\{\{name\}\}/g, c.name);
+                    shortcuts['poke-pet'].description = pokeLabel;
+                    const pokeNameEl = document.querySelector('[data-action="poke-pet"]');
+                    if (pokeNameEl) {
+                        const nameDiv = pokeNameEl.closest('.shortcut-item').querySelector('.shortcut-name');
+                        const descDiv = pokeNameEl.closest('.shortcut-item').querySelector('.shortcut-description');
+                        if (nameDiv) nameDiv.textContent = pokeLabel;
+                        if (descDiv) descDiv.textContent = pokeDesc;
+                    }
+                }
+            } catch (_) {}
+        })();
 
         // 当前正在录制的快捷键
         let recordingAction = null;

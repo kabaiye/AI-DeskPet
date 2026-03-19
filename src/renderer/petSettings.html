@@ -63,7 +63,6 @@
             -webkit-app-region: no-drag;
         }
 
-        /* ====== 折叠面板 ====== */
         .section {
             background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(10px);
@@ -105,11 +104,10 @@
             overflow: hidden;
             transition: max-height 0.3s ease;
         }
-        .section.open .section-body { max-height: 600px; }
+        .section.open .section-body { max-height: 2000px; }
 
         .section-inner { padding: 0 18px 16px; }
 
-        /* ====== 表单 ====== */
         .form-group { margin-bottom: 14px; }
 
         .form-group label {
@@ -120,7 +118,8 @@
             font-size: 13px;
         }
 
-        .form-group input,
+        .form-group input[type="text"],
+        .form-group input[type="password"],
         .form-group textarea {
             width: 100%;
             padding: 10px 13px;
@@ -133,7 +132,8 @@
             color: #2c5aa0;
         }
 
-        .form-group input:focus,
+        .form-group input[type="text"]:focus,
+        .form-group input[type="password"]:focus,
         .form-group textarea:focus {
             outline: none;
             border-color: #4a6cf7;
@@ -147,7 +147,6 @@
             gap: 10px;
             align-items: center;
         }
-
         .api-row input { flex: 1; }
 
         .link-btn {
@@ -172,28 +171,170 @@
             line-height: 1.5;
         }
 
-        /* ====== 性格示例 ====== */
-        .example-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 10px;
-        }
+        /* ====== 性格预设勾选 ====== */
+        .preset-list { display: flex; flex-direction: column; gap: 10px; }
 
-        .example-chip {
-            padding: 6px 14px;
-            border: 1.5px solid rgba(74, 108, 247, 0.15);
-            border-radius: 20px;
-            font-size: 12.5px;
-            color: #3d6098;
-            cursor: pointer;
+        .preset-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(74, 108, 247, 0.03);
+            border: 1.5px solid rgba(74, 108, 247, 0.08);
             transition: all 0.2s;
-            background: rgba(255,255,255,0.7);
         }
-        .example-chip:hover {
+        .preset-item.active {
             border-color: #4a6cf7;
             background: rgba(74, 108, 247, 0.06);
         }
+
+        .preset-item input[type="checkbox"] {
+            margin-top: 3px;
+            width: 16px;
+            height: 16px;
+            accent-color: #4a6cf7;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .preset-body { flex: 1; min-width: 0; }
+
+        .preset-label-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .preset-label-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: #2c5aa0;
+            cursor: pointer;
+        }
+
+        .preset-prompt {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid rgba(74, 108, 247, 0.1);
+            border-radius: 7px;
+            font-size: 12px;
+            color: #3d6098;
+            background: rgba(255,255,255,0.7);
+            font-family: inherit;
+            resize: vertical;
+            min-height: 50px;
+            transition: border-color 0.2s;
+        }
+        .preset-prompt:focus {
+            outline: none;
+            border-color: #4a6cf7;
+        }
+
+        /* ====== 透明度 ====== */
+        .transparency-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .transparency-row input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .transparency-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: #4a6cf7;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .transparency-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: #4a6cf7;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        /* ====== 快捷键 ====== */
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(74, 108, 247, 0.06);
+        }
+        .shortcut-item:last-child { border-bottom: none; }
+
+        .shortcut-info { display: flex; flex-direction: column; gap: 2px; }
+        .shortcut-name { font-size: 13px; font-weight: 600; color: #2c5aa0; }
+        .shortcut-desc { font-size: 11px; color: #8a9fba; }
+
+        .shortcut-key {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1.5px solid rgba(74, 108, 247, 0.12);
+            border-radius: 8px;
+            padding: 7px 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #2c5aa0;
+            min-width: 80px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .shortcut-key:hover {
+            border-color: #4a6cf7;
+            box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.08);
+        }
+        .shortcut-key.recording {
+            background: linear-gradient(135deg, #4a6cf7 0%, #6b8cff 100%);
+            color: white;
+            border-color: #4a6cf7;
+            animation: pulse 1s infinite;
+        }
+        .shortcut-key.conflict {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%);
+            color: white;
+            border-color: #ff6b6b;
+        }
+        .shortcut-key.success {
+            background: linear-gradient(135deg, #48bb78 0%, #68d391 100%);
+            color: white;
+            border-color: #48bb78;
+        }
+
+        @keyframes pulse {
+            0%,100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .shortcut-reset-row {
+            display: flex;
+            justify-content: flex-end;
+            padding-top: 10px;
+            border-top: 1px solid rgba(74, 108, 247, 0.06);
+            margin-top: 6px;
+        }
+        .shortcut-reset-btn {
+            padding: 6px 14px;
+            background: rgba(74, 108, 247, 0.06);
+            border: 1.5px solid rgba(74, 108, 247, 0.12);
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #4a6cf7;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .shortcut-reset-btn:hover { background: rgba(74, 108, 247, 0.12); }
 
         /* ====== 底部按钮 ====== */
         .actions {
@@ -220,13 +361,6 @@
         }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(74, 108, 247, 0.3); }
 
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.8);
-            color: #2c5aa0;
-            border: 1.5px solid rgba(74, 108, 247, 0.12);
-        }
-        .btn-secondary:hover { border-color: #4a6cf7; }
-
         .save-toast {
             text-align: center;
             padding: 0 16px;
@@ -240,6 +374,122 @@
         .save-toast.show { opacity: 1; }
         .save-toast.error { color: #f56565; }
 
+        /* ====== 角色选择 ====== */
+        .char-selector {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 14px;
+            margin-bottom: 14px;
+            border: 1.5px solid rgba(74, 108, 247, 0.06);
+            box-shadow: 0 3px 14px rgba(74, 108, 247, 0.07);
+            padding: 13px 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .char-selector label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c5aa0;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .char-selector select {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1.5px solid rgba(74, 108, 247, 0.15);
+            border-radius: 9px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #2c5aa0;
+            background: rgba(255, 255, 255, 0.9);
+            cursor: pointer;
+            transition: all 0.2s;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234a6cf7' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 28px;
+        }
+        .char-selector select:focus {
+            outline: none;
+            border-color: #4a6cf7;
+            box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.08);
+        }
+        .char-edit-btn {
+            padding: 8px 14px;
+            background: rgba(74, 108, 247, 0.08);
+            border: 1.5px solid rgba(74, 108, 247, 0.15);
+            border-radius: 9px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #4a6cf7;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+        .char-edit-btn:hover { background: rgba(74, 108, 247, 0.14); border-color: #4a6cf7; }
+
+        .confirm-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.35);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+        }
+        .confirm-overlay.show { display: flex; }
+        .confirm-box {
+            background: white;
+            border-radius: 16px;
+            padding: 24px 28px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            max-width: 320px;
+            width: 90%;
+            text-align: center;
+        }
+        .confirm-box .title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #2c5aa0;
+            margin-bottom: 10px;
+        }
+        .confirm-box .desc {
+            font-size: 13px;
+            color: #6b8caa;
+            line-height: 1.6;
+            margin-bottom: 18px;
+        }
+        .confirm-box .btns {
+            display: flex;
+            gap: 10px;
+        }
+        .confirm-box .btns button {
+            flex: 1;
+            padding: 10px 0;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .confirm-box .btn-cancel {
+            background: rgba(74,108,247,0.08);
+            color: #4a6cf7;
+        }
+        .confirm-box .btn-confirm {
+            background: linear-gradient(135deg, #4a6cf7 0%, #6b8cff 100%);
+            color: white;
+        }
+        .confirm-box .btn-confirm:hover { box-shadow: 0 4px 12px rgba(74,108,247,0.3); }
+
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(74, 108, 247, 0.2); border-radius: 3px; }
@@ -249,15 +499,22 @@
 <body>
     <div class="settings-container">
         <div class="header">
-            <h1>🐱 桌宠设置</h1>
+            <h1>桌宠设置</h1>
             <button class="close-button" id="closeBtn">×</button>
         </div>
 
         <div class="content">
+            <!-- 角色选择 -->
+            <div class="char-selector">
+                <label>当前角色</label>
+                <select id="charSelect"><option>加载中...</option></select>
+                <button class="char-edit-btn" id="charEditBtn">编辑</button>
+            </div>
+
             <!-- API Key 设置 -->
-            <div class="section open" id="apiSection">
+            <div class="section" id="apiSection">
                 <div class="section-header" onclick="toggleSection('apiSection')">
-                    <h3>🔑 API Key 设置</h3>
+                    <h3>API Key 设置</h3>
                     <span class="section-arrow">▼</span>
                 </div>
                 <div class="section-body">
@@ -277,7 +534,7 @@
             <!-- 个性设置 -->
             <div class="section" id="personalitySection">
                 <div class="section-header" onclick="toggleSection('personalitySection')">
-                    <h3>🎭 个性设置</h3>
+                    <h3>个性设置</h3>
                     <span class="section-arrow">▼</span>
                 </div>
                 <div class="section-body">
@@ -290,15 +547,46 @@
                             <label>性格描述</label>
                             <textarea id="petCharacter" placeholder="描述一下桌宠的性格特点..."></textarea>
                         </div>
-                        <div class="form-group">
-                            <label>快速选择性格</label>
-                            <div class="example-chips">
-                                <span class="example-chip" data-t="lively">活泼可爱</span>
-                                <span class="example-chip" data-t="gentle">温柔体贴</span>
-                                <span class="example-chip" data-t="naughty">调皮捣蛋</span>
-                                <span class="example-chip" data-t="tsundere">高冷傲娇</span>
-                            </div>
+                        <div class="form-group" id="presetGroup" style="display:none">
+                            <label>快速选择性格（勾选后应用，可编辑内容）</label>
+                            <div class="preset-list" id="presetList"></div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 透明度调节 -->
+            <div class="section" id="transparencySection">
+                <div class="section-header" onclick="toggleSection('transparencySection')">
+                    <h3>透明度调节</h3>
+                    <span class="section-arrow">▼</span>
+                </div>
+                <div class="section-body">
+                    <div class="section-inner">
+                        <div class="form-group">
+                            <div class="transparency-row">
+                                <input type="range" id="transparencySlider" min="20" max="100" value="100">
+                                <span class="transparency-value" id="transparencyVal">100%</span>
+                            </div>
+                            <div class="api-hint" style="margin-top:8px">调整桌宠窗口的透明度，最低 20%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快捷键设置 -->
+            <div class="section" id="shortcutSection">
+                <div class="section-header" onclick="toggleSection('shortcutSection')">
+                    <h3>快捷键设置</h3>
+                    <span class="section-arrow">▼</span>
+                </div>
+                <div class="section-body">
+                    <div class="section-inner">
+                        <div id="shortcutItems"></div>
+                        <div class="shortcut-reset-row">
+                            <button class="shortcut-reset-btn" id="shortcutResetBtn">重置默认快捷键</button>
+                        </div>
+                        <div class="api-hint" style="margin-top:4px">点击按键区域后按下新快捷键录入，按 Delete 清除</div>
                     </div>
                 </div>
             </div>
@@ -306,8 +594,18 @@
 
         <div class="save-toast" id="toast"></div>
         <div class="actions">
-            <button class="btn btn-secondary" id="resetBtn">重置默认</button>
             <button class="btn btn-primary" id="saveBtn">保存设置</button>
+        </div>
+    </div>
+
+    <div class="confirm-overlay" id="confirmOverlay">
+        <div class="confirm-box">
+            <div class="title">切换角色</div>
+            <div class="desc" id="confirmDesc">确定要切换角色吗？切换后需要重启应用才能生效。</div>
+            <div class="btns">
+                <button class="btn-cancel" id="confirmCancel">取消</button>
+                <button class="btn-confirm" id="confirmOk">确定切换</button>
+            </div>
         </div>
     </div>
 
@@ -318,17 +616,40 @@
         const petNameInput = document.getElementById('petName');
         const petCharacterInput = document.getElementById('petCharacter');
         const toast = document.getElementById('toast');
+        const charSelect = document.getElementById('charSelect');
+        const confirmOverlay = document.getElementById('confirmOverlay');
+        const transparencySlider = document.getElementById('transparencySlider');
+        const transparencyVal = document.getElementById('transparencyVal');
 
-        const DEFAULT_NAME = '小黑';
-        const DEFAULT_CHARACTER = '你是罗小黑，是一个幼年小猫妖，对世界充满好奇，嫉恶如仇，早安喵，午安喵，晚安喵喵喵。性格活泼可爱，喜欢卖萌，经常用可爱的语气说话，对新鲜事物充满好奇。';
+        let DEFAULT_NAME = '小黑';
+        let DEFAULT_CHARACTER = '';
+        let PRESETS = {};
+        let selectedPresetKey = '';
+        let currentActiveId = '';
+        let pendingSwitchId = '';
 
-        const PRESETS = {
-            lively: '你是罗小黑，是一个幼年小猫妖，对世界充满好奇，嫉恶如仇。性格活泼可爱，喜欢卖萌，经常用可爱的语气说话，对新鲜事物充满好奇，说话时会加上"喵"、"呢"、"哦"等可爱语气词。',
-            gentle: '你是罗小黑，是一个幼年小猫妖，对世界充满好奇，嫉恶如仇。性格温柔体贴，善解人意，会关心主人的心情，说话温柔有耐心，经常表达关心和鼓励。',
-            naughty: '你是罗小黑，是一个幼年小猫妖，对世界充满好奇，嫉恶如仇。性格调皮捣蛋，喜欢恶作剧，说话幽默风趣，经常逗主人开心，会用俏皮的语言表达。',
-            tsundere: '你是罗小黑，是一个幼年小猫妖，对世界充满好奇，嫉恶如仇。性格高冷傲娇，表面高冷，内心温暖，说话傲娇，但会默默关心主人，偶尔会害羞地表达关心。'
-        };
+        // ====== 快捷键相关状态 ======
+        const SHORTCUT_DEFS = [
+            { action: 'quick-chat', name: '快捷聊天', desc: '弹出快捷聊天输入框', default: 'Alt+F1' },
+            { action: 'ai-screenshot', name: 'AI区域截图', desc: '进行AI区域截图识别和分析', default: 'Alt+F2' },
+            { action: 'water-reminder', name: '喝水提醒', desc: '显示喝水提醒窗口', default: '' },
+            { action: 'poke-pet', name: '戳一戳桌宠', desc: '戳一戳桌宠，触发互动', default: 'Alt+F3' },
+            { action: 'open-chat', name: '打开聊天', desc: '打开聊天窗口', default: '' },
+            { action: 'toggle-pet', name: '桌宠隐藏/显示', desc: '隐藏或显示桌宠', default: 'Ctrl+H' },
+            { action: 'open-todo', name: '打开待办', desc: '打开待办事项窗口', default: 'Ctrl+T' },
+            { action: 'open-main', name: '打开主页面', desc: '打开主页面窗口', default: 'Ctrl+O' }
+        ];
 
+        let shortcuts = {};
+        SHORTCUT_DEFS.forEach(d => {
+            shortcuts[d.action] = { key: d.default, description: d.name };
+        });
+
+        let recordingAction = null;
+        let originalShortcuts = {};
+        let shortcutsDisabled = false;
+
+        // ====== 通用 ======
         function toggleSection(id) {
             document.getElementById(id).classList.toggle('open');
         }
@@ -339,20 +660,331 @@
             setTimeout(() => { toast.className = 'save-toast'; }, 3000);
         }
 
-        // 加载
+        // ====== 角色配置 ======
+        async function loadCharacterConfig() {
+            const charConfig = await ipcRenderer.invoke('get-character-config');
+            if (!charConfig) return;
+
+            DEFAULT_NAME = charConfig.name;
+            DEFAULT_CHARACTER = charConfig.personality.default;
+            const presetEntries = charConfig.personality.presets || {};
+            PRESETS = {};
+            const container = document.getElementById('presetList');
+            container.innerHTML = '';
+            const keys = Object.keys(presetEntries);
+            if (keys.length === 0) return;
+
+            document.getElementById('presetGroup').style.display = '';
+            keys.forEach(key => {
+                PRESETS[key] = presetEntries[key].prompt;
+                const item = document.createElement('div');
+                item.className = 'preset-item';
+                item.dataset.key = key;
+
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.id = 'preset_' + key;
+
+                const body = document.createElement('div');
+                body.className = 'preset-body';
+
+                const labelRow = document.createElement('div');
+                labelRow.className = 'preset-label-row';
+                const labelText = document.createElement('label');
+                labelText.className = 'preset-label-text';
+                labelText.htmlFor = 'preset_' + key;
+                labelText.textContent = presetEntries[key].label;
+                labelRow.appendChild(labelText);
+
+                const prompt = document.createElement('textarea');
+                prompt.className = 'preset-prompt';
+                prompt.value = presetEntries[key].prompt;
+                prompt.dataset.key = key;
+
+                body.appendChild(labelRow);
+                body.appendChild(prompt);
+                item.appendChild(cb);
+                item.appendChild(body);
+                container.appendChild(item);
+
+                cb.addEventListener('change', () => {
+                    container.querySelectorAll('.preset-item').forEach(el => {
+                        const otherCb = el.querySelector('input[type="checkbox"]');
+                        if (otherCb !== cb) {
+                            otherCb.checked = false;
+                            el.classList.remove('active');
+                        }
+                    });
+                    if (cb.checked) {
+                        item.classList.add('active');
+                        selectedPresetKey = key;
+                        petCharacterInput.value = prompt.value;
+                    } else {
+                        item.classList.remove('active');
+                        selectedPresetKey = '';
+                    }
+                });
+
+                prompt.addEventListener('input', () => {
+                    PRESETS[key] = prompt.value;
+                    if (cb.checked) {
+                        petCharacterInput.value = prompt.value;
+                    }
+                });
+            });
+        }
+
+        // ====== 角色列表 ======
+        async function loadCharacterList() {
+            const { characters, activeId } = await ipcRenderer.invoke('list-characters');
+            currentActiveId = activeId;
+            charSelect.innerHTML = '';
+            characters.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                if (c.id === activeId) opt.selected = true;
+                charSelect.appendChild(opt);
+            });
+            const sep = document.createElement('option');
+            sep.disabled = true;
+            sep.textContent = '──────────';
+            charSelect.appendChild(sep);
+            const createOpt = document.createElement('option');
+            createOpt.value = '__create__';
+            createOpt.textContent = '+ 创建新角色…';
+            charSelect.appendChild(createOpt);
+        }
+
+        charSelect.addEventListener('change', () => {
+            const val = charSelect.value;
+            if (val === '__create__') {
+                charSelect.value = currentActiveId;
+                ipcRenderer.send('open-character-creator');
+                return;
+            }
+            if (val === currentActiveId) return;
+
+            const selectedName = charSelect.options[charSelect.selectedIndex].textContent;
+            pendingSwitchId = val;
+            document.getElementById('confirmDesc').textContent =
+                `确定要将角色切换为「${selectedName}」吗？切换后需要重启应用才能生效。`;
+            confirmOverlay.classList.add('show');
+        });
+
+        document.getElementById('confirmCancel').addEventListener('click', () => {
+            charSelect.value = currentActiveId;
+            pendingSwitchId = '';
+            confirmOverlay.classList.remove('show');
+        });
+
+        document.getElementById('confirmOk').addEventListener('click', async () => {
+            confirmOverlay.classList.remove('show');
+            if (!pendingSwitchId) return;
+            const result = await ipcRenderer.invoke('switch-character', pendingSwitchId);
+            if (result.success) {
+                currentActiveId = pendingSwitchId;
+                showToast('角色已切换，请重启应用后生效');
+            } else {
+                charSelect.value = currentActiveId;
+                showToast(result.error || '切换失败', true);
+            }
+            pendingSwitchId = '';
+        });
+
+        // ====== 透明度 ======
+        transparencySlider.addEventListener('input', () => {
+            const v = transparencySlider.value;
+            transparencyVal.textContent = v + '%';
+            ipcRenderer.send('set-pet-transparency', parseInt(v));
+        });
+
+        async function loadTransparency() {
+            try {
+                const val = await ipcRenderer.invoke('get-pet-transparency');
+                if (val !== undefined && val !== null) {
+                    transparencySlider.value = val;
+                    transparencyVal.textContent = val + '%';
+                }
+            } catch (_) {}
+        }
+
+        // ====== 快捷键 ======
+        function buildShortcutUI() {
+            const container = document.getElementById('shortcutItems');
+            container.innerHTML = '';
+            SHORTCUT_DEFS.forEach(def => {
+                const item = document.createElement('div');
+                item.className = 'shortcut-item';
+                item.innerHTML = `
+                    <div class="shortcut-info">
+                        <div class="shortcut-name">${def.name}</div>
+                        <div class="shortcut-desc">${def.desc}</div>
+                    </div>
+                    <div class="shortcut-key" data-action="${def.action}">${shortcuts[def.action]?.key || '未设置'}</div>
+                `;
+                container.appendChild(item);
+            });
+            container.querySelectorAll('.shortcut-key').forEach(el => {
+                el.addEventListener('click', () => startRecording(el.dataset.action));
+            });
+        }
+
+        async function loadShortcuts() {
+            try {
+                const saved = await ipcRenderer.invoke('load-shortcuts');
+                if (saved) Object.assign(shortcuts, saved);
+            } catch (_) {}
+            buildShortcutUI();
+        }
+
+        function startRecording(action) {
+            if (recordingAction) stopRecording();
+            originalShortcuts[action] = shortcuts[action].key;
+            if (!shortcutsDisabled) {
+                ipcRenderer.send('disable-shortcuts');
+                shortcutsDisabled = true;
+            }
+            recordingAction = action;
+            const el = document.querySelector(`[data-action="${action}"]`);
+            el.classList.add('recording');
+            el.textContent = '请按键...';
+        }
+
+        function stopRecording() {
+            if (!recordingAction) return;
+            const el = document.querySelector(`[data-action="${recordingAction}"]`);
+            el.classList.remove('recording');
+            recordingAction = null;
+        }
+
+        function enableShortcuts() {
+            ipcRenderer.send('enable-shortcuts', shortcuts);
+            shortcutsDisabled = false;
+        }
+
+        const MODIFIER_KEYS = new Set(['Control', 'Shift', 'Alt', 'Meta']);
+        const SPECIAL_KEY_MAP = {
+            'ArrowUp': 'Up', 'ArrowDown': 'Down', 'ArrowLeft': 'Left', 'ArrowRight': 'Right',
+            ' ': 'Space', 'Enter': 'Enter', 'Backspace': 'Backspace',
+            'Delete': 'Delete', 'Tab': 'Tab', 'Home': 'Home', 'End': 'End',
+            'PageUp': 'PageUp', 'PageDown': 'PageDown', 'Insert': 'Insert'
+        };
+
+        function normalizeKeyName(e) {
+            const key = e.key;
+            if (/^F\d{1,2}$/.test(key)) return key;
+            if (key.length === 1) return key.toUpperCase();
+            return SPECIAL_KEY_MAP[key] || key;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (!recordingAction) {
+                if (e.key === 'Escape') window.close();
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (MODIFIER_KEYS.has(e.key)) return;
+
+            const el = document.querySelector(`[data-action="${recordingAction}"]`);
+
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                shortcuts[recordingAction].key = '';
+                el.textContent = '未设置';
+                el.classList.remove('recording');
+                el.classList.add('success');
+                setTimeout(() => el.classList.remove('success'), 1000);
+                recordingAction = null;
+                enableShortcuts();
+                saveShortcuts();
+                return;
+            }
+
+            if (e.key === 'Escape') {
+                shortcuts[recordingAction].key = originalShortcuts[recordingAction];
+                el.textContent = originalShortcuts[recordingAction] || '未设置';
+                stopRecording();
+                enableShortcuts();
+                return;
+            }
+
+            const mods = [];
+            if (e.ctrlKey) mods.push('Ctrl');
+            if (e.shiftKey) mods.push('Shift');
+            if (e.altKey) mods.push('Alt');
+            if (e.metaKey) mods.push('Cmd');
+            const keyName = normalizeKeyName(e);
+            const combo = mods.length > 0 ? mods.join('+') + '+' + keyName : keyName;
+
+            let conflict = null;
+            for (const [a, c] of Object.entries(shortcuts)) {
+                if (a !== recordingAction && c.key === combo) {
+                    conflict = c.description;
+                    break;
+                }
+            }
+
+            shortcuts[recordingAction].key = combo;
+            el.textContent = combo;
+            el.classList.remove('recording');
+
+            if (conflict) {
+                el.classList.add('conflict');
+                showToast(`与「${conflict}」冲突`, true);
+            } else {
+                el.classList.add('success');
+                setTimeout(() => el.classList.remove('success'), 1000);
+                saveShortcuts();
+            }
+            recordingAction = null;
+            enableShortcuts();
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (!recordingAction || MODIFIER_KEYS.has(e.key)) return;
+            const el = document.querySelector(`[data-action="${recordingAction}"]`);
+            if (el.textContent === '请按键...') {
+                shortcuts[recordingAction].key = originalShortcuts[recordingAction];
+                el.textContent = originalShortcuts[recordingAction] || '未设置';
+                stopRecording();
+                enableShortcuts();
+            }
+        });
+
+        function saveShortcuts() {
+            ipcRenderer.send('save-shortcuts', shortcuts);
+            ipcRenderer.send('update-shortcuts', shortcuts);
+        }
+
+        document.getElementById('shortcutResetBtn').addEventListener('click', () => {
+            SHORTCUT_DEFS.forEach(d => { shortcuts[d.action].key = d.default; });
+            buildShortcutUI();
+            saveShortcuts();
+            showToast('快捷键已重置为默认');
+        });
+
+        // ====== 加载 & 保存 ======
         async function loadSettings() {
+            await loadCharacterConfig();
+            await loadCharacterList();
+            await loadShortcuts();
+            await loadTransparency();
             const s = await ipcRenderer.invoke('load-settings');
             if (s) {
                 apiKeyInput.value = s.apiKey || '';
                 petNameInput.value = s.petName || DEFAULT_NAME;
                 petCharacterInput.value = s.petCharacter || DEFAULT_CHARACTER;
+                if (!s.apiKey) {
+                    document.getElementById('apiSection').classList.add('open');
+                }
             } else {
                 petNameInput.value = DEFAULT_NAME;
                 petCharacterInput.value = DEFAULT_CHARACTER;
             }
         }
 
-        // 保存
         document.getElementById('saveBtn').addEventListener('click', () => {
             const settings = {
                 apiKey: apiKeyInput.value.trim(),
@@ -360,32 +992,27 @@
                 petCharacter: petCharacterInput.value.trim() || DEFAULT_CHARACTER
             };
             ipcRenderer.send('save-settings', settings);
+            saveShortcuts();
             showToast('设置已保存！');
         });
 
-        // 重置
-        document.getElementById('resetBtn').addEventListener('click', () => {
-            petNameInput.value = DEFAULT_NAME;
-            petCharacterInput.value = DEFAULT_CHARACTER;
-            showToast('已重置为默认设置');
-        });
-
-        // 去申请
         document.getElementById('applyBtn').addEventListener('click', () => {
             shell.openExternal('https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys');
         });
 
-        // 性格预设
-        document.querySelectorAll('.example-chip').forEach(chip => {
-            chip.addEventListener('click', () => {
-                petCharacterInput.value = PRESETS[chip.dataset.t];
-                showToast('已应用性格预设');
-            });
+        document.getElementById('closeBtn').addEventListener('click', () => window.close());
+
+        window.addEventListener('beforeunload', () => {
+            if (shortcutsDisabled) enableShortcuts();
         });
 
-        // 关闭
-        document.getElementById('closeBtn').addEventListener('click', () => window.close());
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') window.close(); });
+        ipcRenderer.on('refresh-character-list', () => {
+            loadCharacterList();
+        });
+
+        document.getElementById('charEditBtn').addEventListener('click', () => {
+            ipcRenderer.send('open-character-editor', currentActiveId);
+        });
 
         loadSettings();
     </script>

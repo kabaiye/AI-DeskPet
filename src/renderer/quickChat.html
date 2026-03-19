@@ -49,12 +49,19 @@
 <body>
     <div class="input-wrap">
         <span class="icon">🐱</span>
-        <input type="text" id="chatInput" placeholder="和小黑说点什么…" autofocus />
+        <input type="text" id="chatInput" placeholder="说点什么…" autofocus />
         <span class="hint">Enter ↵</span>
     </div>
     <script>
         const { ipcRenderer } = require('electron');
         const input = document.getElementById('chatInput');
+
+        (async function() {
+            try {
+                const c = await ipcRenderer.invoke('get-character-config');
+                if (c && c.ui) input.placeholder = c.ui.quickChatPlaceholder.replace(/\{\{name\}\}/g, c.name);
+            } catch (_) {}
+        })();
 
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && input.value.trim()) {

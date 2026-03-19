@@ -1,6 +1,7 @@
 const { app, Notification, BrowserWindow } = require('electron');
 const Store = require('electron-store');
 const { generateFunReminder, generateWaterReminder, generateInactivityReminder } = require('./aiService');
+const cs = require('./characterService');
 
 // 全局变量：小黑文本弹窗与喝水提醒弹窗创建函数
 let createPetStatusWindowFunction = null;
@@ -187,16 +188,7 @@ class ActivityMonitor {
         timeGreeting = '夜深了';
       }
 
-      const messages = [
-        `${timeGreeting}！工作累了吗？休息一下吧～✨`,
-        '觉得你工作很认真呢！继续保持！💪',
-        '想和你聊聊天～有什么有趣的事情吗？😊',
-        '发现你专注的样子很可爱呢！🌟',
-        '提醒你该放松一下啦！深呼吸～🌬️',
-        '觉得你的努力一定会得到回报的！加油！🚀'
-      ];
-
-      const message = messages[Math.floor(Math.random() * messages.length)];
+      const message = cs.getRandomFallback('reminder', { timeGreeting });
 
       if (createPetStatusWindowFunction) {
         createPetStatusWindowFunction(message);
@@ -208,7 +200,7 @@ class ActivityMonitor {
   showJourneyStatus() {
     const notification = {
       title: '旅程状态',
-      body: '你的小黑正在冰岛看极光呢！预计还有15小时到达 🌌',
+      body: cs.getRandomFallback('journeyStatus'),
       icon: 'icon.png'
     };
 

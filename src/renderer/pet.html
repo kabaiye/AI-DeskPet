@@ -126,7 +126,7 @@
 
 <body>
     <div class="pet-container" id="pet">
-        <img class="pet-image" id="petImage" src="../assets/imgs/罗小黑的生活/pet.gif" alt="桌宠" />
+        <img class="pet-image" id="petImage" src="" alt="桌宠" />
     </div>
 
 
@@ -134,34 +134,45 @@
     <script>
         const pet = document.getElementById('pet');
         const petImage = document.getElementById('petImage');
+        const { ipcRenderer: petIpc } = require('electron');
 
-        // 表情映射表
-        const emotionMap = {
-            '好棒': '../assets/imgs/罗小黑的生活/好棒.gif',
-            '嘿嘿被夸了': '../assets/imgs/罗小黑的生活/嘿嘿被夸了.gif',
-            '给你花花': '../assets/imgs/罗小黑的生活/给你花花.gif',
-            '有瓜让我听听': '../assets/imgs/罗小黑的生活/有瓜让我听听.gif',
-            '猫头偷看': '../assets/imgs/罗小黑的生活/猫头偷看.gif',
-            '思考并怀疑': '../assets/imgs/罗小黑的生活/思考并怀疑.gif',
-            '好复杂': '../assets/imgs/罗小黑的生活/好复杂.gif',
-            '馋得流口水': '../assets/imgs/罗小黑的生活/馋得流口水.gif',
-            '生气替你出头': '../assets/imgs/罗小黑的生活/生气替你出头.gif',
-            '哼不理你了': '../assets/imgs/罗小黑的生活/哼不理你了.gif',
-            '玩手机': '../assets/imgs/罗小黑的生活/玩手机.gif',
-            '困死了': '../assets/imgs/罗小黑的生活/困死了.gif'
-        };
+        let emotionMap = {};
+        let charAssets = null;
+        let assetsBase = '';
 
-        // 根据时间切换默认表情
+        function assetPath(filename) {
+            const baseDir = charAssets ? charAssets.baseDir : '罗小黑的生活';
+            if (assetsBase) return `file:///${assetsBase}/${baseDir}/${filename}`;
+            return `../assets/imgs/${baseDir}/${filename}`;
+        }
+
+        (async function initCharacter() {
+            try {
+                const charConfig = await petIpc.invoke('get-character-config');
+                if (charConfig && charConfig.assets) {
+                    charAssets = charConfig.assets;
+                    assetsBase = charConfig.assetsBasePath || '';
+                    emotionMap = {};
+                    for (const [emotion, file] of Object.entries(charAssets.emotions)) {
+                        emotionMap[emotion] = assetPath(file);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load character config:', e);
+            }
+            updateDefaultEmotion();
+        })();
+
         function updateDefaultEmotion() {
             const now = new Date();
             const hour = now.getHours();
+            const nightImg = charAssets ? charAssets.idleNightImage : '困死了.gif';
+            const defaultImg = charAssets ? charAssets.defaultImage : 'pet.gif';
 
-            if (hour >= 20) { // 晚上8点后
-                petImage.src = '../assets/imgs/罗小黑的生活/困死了.gif';
-                console.log('晚上时间，切换到困死了.gif');
+            if (hour >= 20) {
+                petImage.src = assetPath(nightImg);
             } else {
-                petImage.src = '../assets/imgs/罗小黑的生活/pet.gif';
-                console.log('白天时间，使用默认pet.gif');
+                petImage.src = assetPath(defaultImg);
             }
         }
 

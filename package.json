@@ -1,7 +1,7 @@
 {
-  "name": "xiaoheicat",
+  "name": "ai-deskpet",
   "version": "1.0.0",
-  "description": "XiaoHeiCat - AI-powered desktop pet companion",
+  "description": "AI-DeskPet - AI-powered customizable desktop pet companion",
   "main": "src/main/index.js",
   "scripts": {
     "start": "node scripts/start.js",
@@ -30,15 +30,28 @@
     "openai": "^4.0.0"
   },
   "build": {
-    "appId": "com.xiaoheicat.app",
-    "productName": "XiaoHeiCat",
+    "appId": "com.ai-deskpet.app",
+    "productName": "AI-DeskPet",
     "directories": {
       "output": "dist"
     },
     "files": [
       "src/**/*",
+      "!src/assets/imgs/**",
       "node_modules/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "characters",
+        "to": "characters",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "src/assets/imgs",
+        "to": "assets",
+        "filter": ["**/*"]
+      }
     ],
     "win": {
       "target": [
@@ -55,7 +68,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "XiaoHeiCat"
+      "shortcutName": "AI-DeskPet"
     }
   }
 }

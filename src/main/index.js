@@ -1,5 +1,6 @@
 // 加载环境变量
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 const { app, BrowserWindow, globalShortcut, Notification, ipcMain, Menu } = require('electron');
 const Screenshots = require('electron-screenshots');
@@ -8,6 +9,7 @@ const { analyzeScreenshot, generateFunReminder, generatePokeReaction, updatePetS
 const proactiveEngine = require('./proactiveEngine');
 const storage = require('./storageService');
 const config = require('./config');
+const cs = require('./characterService');
 
 // 渲染页面路径辅助
 function rendererPath(name) {
@@ -40,6 +42,7 @@ let chatDisplayMessages = []; // 运行时聊天记录，启动时从文件加�
 let screenshots = null; // 第三方区域截屏实例
 let screenshotQuestionWindow = null; // 截图追问输入框
 let pendingScreenshotBase64 = null; // 等待提问的截图缓存
+let characterCreatorWindow = null; // 角色创建窗口
 
 // 拖动相关变量
 let isDragging = false;
@@ -559,25 +562,22 @@ function createPetWindow() {
     contextMenuWindow = null;
   });
 
-  // 处理透明度调节
   ipcMain.on('set-pet-transparency', (event, transparency) => {
     try {
-      // 保存当前透明度值
       currentPetTransparency = transparency;
-
       if (petWindow && !petWindow.isDestroyed()) {
-        // 使用CSS样式而不是Electron的setOpacity方法来控制透明度
-        // 将百分比转换为0-1的范围
         const opacity = transparency / 100;
         petWindow.webContents.executeJavaScript(`
-          // 通过修改根元素的样式来控制透明度，避免影响其他样式
           document.documentElement.style.opacity = ${opacity};
         `);
-      } else {
       }
     } catch (error) {
       console.error('Error setting pet transparency:', error);
     }
+  });
+
+  ipcMain.handle('get-pet-transparency', () => {
+    return currentPetTransparency;
   });
 
   // 打开透明度控制窗口
@@ -1121,7 +1121,7 @@ function loadAndRegisterShortcuts() {
       'quick-chat': { key: 'Alt+F1', description: '快捷聊天' },
       'ai-screenshot': { key: 'Alt+F2', description: 'AI区域截图' },
       'water-reminder': { key: '', description: '喝水提醒' },
-      'poke-pet': { key: 'Alt+F3', description: '戳一戳小黑' },
+      'poke-pet': { key: 'Alt+F3', description: cs.renderMessage(cs.getCharacter().ui.pokePetLabel) },
       'open-chat': { key: '', description: '打开聊天' },
       'toggle-pet': { key: 'Ctrl+H', description: '桌宠隐藏/显示' },
       'open-todo': { key: 'Ctrl+T', description: '打开待办' },
@@ -1947,8 +1947,8 @@ function createPetSettingsWindow() {
     }
 
     petSettingsWindow = new BrowserWindow({
-      width: 500,
-      height: 700,
+      width: 520,
+      height: 780,
       frame: false,
       alwaysOnTop: false,
       resizable: true,
@@ -1968,8 +1968,8 @@ function createPetSettingsWindow() {
     const psDisplay = getPetDisplay();
     const psWA = psDisplay.workArea;
     petSettingsWindow.setPosition(
-      Math.round(psWA.x + (psWA.width - 500) / 2),
-      Math.round(psWA.y + (psWA.height - 700) / 2)
+      Math.round(psWA.x + (psWA.width - 520) / 2),
+      Math.round(psWA.y + (psWA.height - 780) / 2)
     );
 
     petSettingsWindow.once('ready-to-show', () => {
@@ -1987,16 +1987,13 @@ function createPetSettingsWindow() {
 }
 
 function checkAndShowPetSettingsOnStartup() {
-  const settings = storage.load('settings', null);
-  if (!settings || !settings.petName) {
-    console.log('首次启动，显示桌宠设置窗口');
-    setTimeout(() => createPetSettingsWindow(), 2000);
-  } else {
-    console.log('桌宠已设置，跳过设置窗口');
-    updatePetSettings({ petName: settings.petName, petCharacter: settings.petCharacter });
-    if (settings.apiKey) {
-      config.setApiKey(settings.apiKey);
-    }
+  const char = cs.getCharacter();
+  const defaults = { petName: char.name, petCharacter: char.personality.default };
+  console.log('加载角色设置:', defaults.petName);
+  updatePetSettings(defaults);
+  const globalSettings = storage.load('settings', null);
+  if (globalSettings && globalSettings.apiKey) {
+    config.setApiKey(globalSettings.apiKey);
   }
 }
 
@@ -2183,8 +2180,8 @@ ipcMain.handle('storage-save', (event, name, data) => {
 });
 
 ipcMain.on('save-settings', (event, settings) => {
-  storage.save('settings', settings);
   if (settings.apiKey !== undefined) {
+    storage.save('settings', { apiKey: settings.apiKey });
     config.setApiKey(settings.apiKey);
   }
   if (settings.petName || settings.petCharacter) {
@@ -2193,7 +2190,56 @@ ipcMain.on('save-settings', (event, settings) => {
 });
 
 ipcMain.handle('load-settings', () => {
-  return storage.load('settings', {});
+  const global = storage.load('settings', {});
+  const char = cs.getCharacter();
+  return {
+    apiKey: global.apiKey || '',
+    petName: char.name,
+    petCharacter: char.personality.default
+  };
+});
+
+ipcMain.handle('get-character-config', () => {
+  return cs.getCharacterForRenderer();
+});
+
+ipcMain.handle('list-characters', () => {
+  try {
+    const charDir = cs.getCharactersDir();
+    const files = fs.readdirSync(charDir).filter(f => f.endsWith('.json') && f !== 'default.json');
+    const defaultConf = JSON.parse(fs.readFileSync(path.join(charDir, 'default.json'), 'utf-8'));
+    const activeId = defaultConf.activeCharacter || 'xiaohei';
+
+    const characters = files.map(f => {
+      try {
+        const raw = JSON.parse(fs.readFileSync(path.join(charDir, f), 'utf-8'));
+        return { id: raw.id, name: raw.name || raw.id, displayName: raw.displayName || raw.name || raw.id };
+      } catch (_) { return null; }
+    }).filter(Boolean);
+
+    return { characters, activeId };
+  } catch (err) {
+    console.error('Failed to list characters:', err);
+    return { characters: [], activeId: 'xiaohei' };
+  }
+});
+
+ipcMain.handle('switch-character', (event, newCharId) => {
+  try {
+    const charDir = cs.getCharactersDir();
+    const charFile = path.join(charDir, `${newCharId}.json`);
+    if (!fs.existsSync(charFile)) {
+      return { success: false, error: `角色「${newCharId}」不存在` };
+    }
+    const defaultPath = path.join(charDir, 'default.json');
+    fs.writeFileSync(defaultPath, JSON.stringify({ activeCharacter: newCharId }, null, 2), 'utf-8');
+    storage.save('chatHistory', []);
+    console.log(`Character switched to: ${newCharId}, chat history cleared (restart required)`);
+    return { success: true };
+  } catch (err) {
+    console.error('Failed to switch character:', err);
+    return { success: false, error: err.message };
+  }
 });
 
 ipcMain.on('save-todos', (event, todos) => {
@@ -2230,10 +2276,224 @@ ipcMain.on('add-todo-from-ai', (event, content) => {
   addTodoFromAI(content);
 });
 
+// ====== 角色创建/编辑 ======
+let pendingEditCharId = null;
+
+ipcMain.on('open-character-creator', () => {
+  pendingEditCharId = null;
+  createCharacterCreatorWindow();
+});
+
+ipcMain.on('open-character-editor', (event, charId) => {
+  pendingEditCharId = charId;
+  createCharacterCreatorWindow();
+});
+
+ipcMain.handle('get-edit-character-data', () => {
+  if (!pendingEditCharId) return null;
+  try {
+    const charDir = cs.getCharactersDir();
+    const filePath = path.join(charDir, `${pendingEditCharId}.json`);
+    if (!fs.existsSync(filePath)) return null;
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    return { charData: JSON.parse(raw), assetsBase: cs.getAssetsDir().replace(/\\/g, '/') };
+  } catch (err) {
+    console.error('Failed to load character for editing:', err);
+    return null;
+  }
+});
+
+ipcMain.handle('update-character', (event, charData) => {
+  try {
+    const charDir = cs.getCharactersDir();
+    const filePath = path.join(charDir, `${charData.id}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(charData, null, 2), 'utf-8');
+    console.log(`Character updated: ${charData.name} (${charData.id})`);
+    if (petSettingsWindow && !petSettingsWindow.isDestroyed()) {
+      petSettingsWindow.webContents.send('refresh-character-list');
+    }
+    return { success: true };
+  } catch (err) {
+    console.error('Failed to update character:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('save-new-character', (event, charData) => {
+  try {
+    const charDir = cs.getCharactersDir();
+    const filePath = path.join(charDir, `${charData.id}.json`);
+    if (fs.existsSync(filePath)) {
+      return { success: false, error: `角色ID「${charData.id}」已存在，请换一个ID` };
+    }
+    fs.writeFileSync(filePath, JSON.stringify(charData, null, 2), 'utf-8');
+    console.log(`Character created: ${charData.name} (${charData.id}) -> ${filePath}`);
+    if (petSettingsWindow && !petSettingsWindow.isDestroyed()) {
+      petSettingsWindow.webContents.send('refresh-character-list');
+    }
+    return { success: true };
+  } catch (err) {
+    console.error('Failed to save character:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('get-assets-dir', () => {
+  return cs.getAssetsDir().replace(/\\/g, '/');
+});
+
+ipcMain.handle('generate-character-content', async (event, { name, personality }) => {
+  try {
+    if (!config.IS_AI_CONFIGURED) {
+      return { success: false, error: '请先在桌宠设置中配置 API Key' };
+    }
+    const OpenAI = require('openai');
+    const client = new OpenAI({
+      apiKey: config.DASHSCOPE_API_KEY,
+      baseURL: config.DASHSCOPE_BASE_URL
+    });
+    const prompt = `你是一个桌宠角色设计助手。根据以下角色信息，生成角色的英文ID、性格预设和AI回复风格。
+
+角色名称：${name}
+角色性格描述：${personality}
+
+请严格按以下JSON格式返回，不要输出其他内容：
+{
+  "id": "角色的英文标识，全小写字母，简短有意义，如 xiaobai、kagura、lucky_cat",
+  "presets": {
+    "p1": { "label": "2-4字的性格标签", "prompt": "基于角色特点的完整性格变体描述，30-60字" },
+    "p2": { "label": "2-4字的性格标签", "prompt": "另一种性格变体描述，30-60字" },
+    "p3": { "label": "2-4字的性格标签", "prompt": "另一种性格变体描述，30-60字" },
+    "p4": { "label": "2-4字的性格标签", "prompt": "另一种性格变体描述，30-60字" }
+  },
+  "style": {
+    "screenshot": "看到截图时的反应方式描述，15-30字",
+    "chat": "日常聊天的语气风格描述，15-30字",
+    "reminder": "提醒主人时的语气描述，10-20字",
+    "greeting": "打招呼的方式描述，10-20字",
+    "thought": "碎碎念的风格描述，10-20字",
+    "milestone": "里程碑感言的风格描述，10-20字",
+    "poke": "被主人戳一戳时的反应方式描述，10-20字"
+  }
+}
+
+要求：
+1. id 必须是纯英文小写字母和下划线，简短且能体现角色特征
+2. 4个预设应该是同一角色的不同性格侧面，各有特色
+3. 风格描述要体现角色的独特个性，不要写通用的描述
+4. 所有内容都要贴合角色的性格设定
+5. 【重要】style中的风格描述只写抽象的风格方向，绝对不要包含具体台词或引号对话示例，否则AI会反复照抄`;
+
+    const resp = await client.chat.completions.create({
+      model: config.AI_TEXT_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.8
+    });
+
+    const text = resp.choices[0].message.content.trim();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return { success: false, error: 'AI返回格式异常' };
+
+    const data = JSON.parse(jsonMatch[0]);
+    return { success: true, data };
+  } catch (err) {
+    console.error('AI generate character content failed:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('copy-asset-files', async (event, { targetDir, files }) => {
+  try {
+    const assetsDir = cs.getAssetsDir();
+    const destDir = path.join(assetsDir, targetDir);
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+    const results = [];
+    for (const f of files) {
+      const destPath = path.join(destDir, f.name);
+      fs.copyFileSync(f.sourcePath, destPath);
+      results.push({ name: f.name, success: true });
+    }
+    console.log(`Copied ${results.length} asset files to ${destDir}`);
+    return { success: true, dir: destDir.replace(/\\/g, '/'), results };
+  } catch (err) {
+    console.error('Failed to copy asset files:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('select-gif-files', async () => {
+  const { dialog } = require('electron');
+  const result = await dialog.showOpenDialog({
+    title: '选择GIF文件',
+    filters: [{ name: 'GIF图片', extensions: ['gif', 'png'] }],
+    properties: ['openFile', 'multiSelections']
+  });
+  if (result.canceled) return { canceled: true, files: [] };
+  return {
+    canceled: false,
+    files: result.filePaths.map(fp => ({
+      path: fp,
+      name: path.basename(fp)
+    }))
+  };
+});
+
+function createCharacterCreatorWindow() {
+  try {
+    if (characterCreatorWindow && !characterCreatorWindow.isDestroyed()) {
+      characterCreatorWindow.show();
+      characterCreatorWindow.focus();
+      return;
+    }
+
+    characterCreatorWindow = new BrowserWindow({
+      width: 640,
+      height: 780,
+      frame: false,
+      resizable: true,
+      skipTaskbar: false,
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false,
+        enableRemoteModule: true
+      },
+      movable: true,
+      focusable: true,
+      show: false
+    });
+
+    characterCreatorWindow.loadFile(rendererPath('characterCreator.html'));
+
+    const display = getPetDisplay();
+    const wa = display.workArea;
+    characterCreatorWindow.setPosition(
+      Math.round(wa.x + (wa.width - 640) / 2),
+      Math.round(wa.y + (wa.height - 780) / 2)
+    );
+
+    characterCreatorWindow.once('ready-to-show', () => {
+      characterCreatorWindow.show();
+    });
+
+    characterCreatorWindow.on('closed', () => {
+      characterCreatorWindow = null;
+    });
+  } catch (error) {
+    console.error('Error creating character creator window:', error);
+  }
+}
+
 // ====== 统一文件存储 IPC END ======
 
 // 应用准备就绪时执行
 app.whenReady().then(() => {
+  // 从 default.json 读取当前启用的角色
+  const defaultConf = JSON.parse(fs.readFileSync(
+    path.join(cs.getCharactersDir(), 'default.json'), 'utf-8'
+  ));
+  cs.loadCharacter(defaultConf.activeCharacter);
   // 从文件加载持久化数据
   config.loadApiKeyFromStorage();
   chatDisplayMessages = storage.load('chatHistory', []);

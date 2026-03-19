@@ -250,7 +250,7 @@
 <body>
   <div class="reminder-container">
     <button class="close-btn" id="close">×</button>
-    <img id="mainImage" class="main-image" src="../assets/imgs/罗小黑的生活/猫头偷看.gif" alt="reminder">
+    <img id="mainImage" class="main-image" src="" alt="reminder">
     <p class="message" id="question">该喝水啦！</p>
     <div class="water-layer" id="water">
       <div class="water-wave"></div>
@@ -264,7 +264,7 @@
   <!-- 成功画面 -->
   <div class="yes-screen" id="yesScreen">
     <h1 class="yes-text" id="successText">喝水最健康！💧</h1>
-    <img src="../assets/imgs/罗小黑的生活/给你花花.gif" alt="good" class="yes-image">
+    <img id="successImage" src="" alt="good" class="yes-image">
   </div>
 
   <!-- 成功画面按钮层 -->
@@ -288,45 +288,61 @@
 
     const params = new URLSearchParams(window.location.search);
     let username = params.get("name");
-
-    // 限制用户名长度，避免页面样式崩坏
     const maxLength = 20;
     const safeUsername = username ? username.substring(0, maxLength) : "";
 
-    if (safeUsername) {
-      questionText.innerText = `该喝水啦，${safeUsername}！`;
+    let charAssets = null;
+    let waterUI = null;
+    let noTexts = [];
+    let emotionGradient = [];
+    let wrAssetsBase = '';
+
+    function wrAssetPath(filename) {
+      const baseDir = charAssets ? charAssets.baseDir : '罗小黑的生活';
+      if (wrAssetsBase) return `file:///${wrAssetsBase}/${baseDir}/${filename}`;
+      return `../assets/imgs/${baseDir}/${filename}`;
     }
 
-    let clickCount = 0; // 记录点击 No 的次数
+    (async function initWaterReminder() {
+      try {
+        const { ipcRenderer: wrIpc } = require('electron');
+        const c = await wrIpc.invoke('get-character-config');
+        if (c) {
+          charAssets = c.assets;
+          wrAssetsBase = c.assetsBasePath || '';
+          waterUI = c.waterReminderUI;
+          noTexts = waterUI.noTexts;
+          emotionGradient = charAssets.waterReminder.emotionGradient;
 
-    // No 按钮的文字变化（情绪渐变 10 阶）
-    const noTexts = [
-      "？你认真的吗…",
-      "要不再想想？",
-      "不许选这个！",
-      "我会很伤心…",
-      "不行:(",
-      "再给个面子嘛~",
-      "真的不行！",
-      "拜托啦~",
-      "喝口再走～",
-      "就一小口！"
-    ];
+          mainImage.src = wrAssetPath(charAssets.waterReminder.mainImage);
+          document.getElementById('successImage').src = wrAssetPath(charAssets.waterReminder.successImage);
 
-    // 表情梯度映射（点击次数 -> 表情）
+          if (safeUsername) {
+            questionText.innerText = waterUI.questionWithName.replace(/\{\{username\}\}/g, safeUsername);
+          } else {
+            questionText.innerText = waterUI.defaultQuestion;
+          }
+
+          yesButton.innerText = waterUI.yesButtonText;
+          noButton.innerText = waterUI.noButtonText;
+          dismissBtn.innerText = waterUI.dismissText;
+        }
+      } catch (_) {
+        noTexts = ["？你认真的吗…","要不再想想？","不许选这个！","我会很伤心…","不行:(","再给个面子嘛~","真的不行！","拜托啦~","喝口再走～","就一小口！"];
+        if (safeUsername) questionText.innerText = `该喝水啦，${safeUsername}！`;
+      }
+    })();
+
+    let clickCount = 0;
+
     function updateExpressionByClicks(n) {
-      if (n <= 2) {
-        mainImage.src = "../assets/imgs/罗小黑的生活/猫头偷看.gif";
-      } else if (n <= 4) {
-        mainImage.src = "../assets/imgs/罗小黑的生活/思考并怀疑.gif";
-      } else if (n <= 6) {
-        mainImage.src = "../assets/imgs/罗小黑的生活/好复杂.gif";
-      } else if (n <= 8) {
-        mainImage.src = "../assets/imgs/罗小黑的生活/哼不理你了.gif";
-      } else if (n < 10) {
-        mainImage.src = "../assets/imgs/罗小黑的生活/生气替你出头.gif";
-      } else {
-        mainImage.src = "../assets/imgs/罗小黑的生活/困死了.gif";
+      if (emotionGradient.length > 0) {
+        for (const step of emotionGradient) {
+          if (step.maxClicks === null || n <= step.maxClicks) {
+            mainImage.src = wrAssetPath(step.image);
+            return;
+          }
+        }
       }
     }
 
@@ -360,10 +376,9 @@
 
       // 去掉水位上升逻辑，维持固定浅水装饰
 
-      // 达到顶峰时的文案与按钮文案
       if (clickCount >= 10) {
-        questionText.innerText = '啊我死了…快喝水！';
-        yesButton.innerText = '复活';
+        questionText.innerText = waterUI ? waterUI.finalQuestion : '啊我死了…快喝水！';
+        yesButton.innerText = waterUI ? waterUI.finalYesText : '复活';
 
         // 完全隐藏No按钮
         noButton.style.opacity = '0';
@@ -373,7 +388,8 @@
 
     // Yes 按钮点击后，显示成功画面
     yesButton.addEventListener("click", function () {
-      const successMessage = `喝水最健康！💧 ${safeUsername ? safeUsername : ''}`.trim();
+      const baseSuccessMsg = waterUI ? waterUI.successText : '喝水最健康！💧';
+      const successMessage = `${baseSuccessMsg} ${safeUsername ? safeUsername : ''}`.trim();
       successText.textContent = successMessage;
 
       // 隐藏原始内容

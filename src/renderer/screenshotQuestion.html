@@ -50,12 +50,19 @@
 <body>
     <div class="input-wrap">
         <span class="icon">📸</span>
-        <input type="text" id="questionInput" placeholder="想问小黑什么？直接回车跳过" autofocus />
+        <input type="text" id="questionInput" placeholder="想问什么？直接回车跳过" autofocus />
         <span class="hint">Enter ↵</span>
     </div>
     <script>
         const { ipcRenderer } = require('electron');
         const input = document.getElementById('questionInput');
+
+        (async function() {
+            try {
+                const c = await ipcRenderer.invoke('get-character-config');
+                if (c && c.ui) input.placeholder = c.ui.screenshotPlaceholder.replace(/\{\{name\}\}/g, c.name);
+            } catch (_) {}
+        })();
 
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {

@@ -134,7 +134,7 @@
 
 <body>
     <div class="status-popup" id="statusPopup">
-        <div class="status-message" id="statusMessage">今天也要开开心心的哦！✨</div>
+        <div class="status-message" id="statusMessage"></div>
     </div>
 
     <script>
@@ -142,6 +142,17 @@
             const { ipcRenderer } = require('electron');
             const statusMessage = document.getElementById('statusMessage');
             const statusPopup = document.getElementById('statusPopup');
+
+            (async function loadDefaultStatus() {
+                try {
+                    const c = await ipcRenderer.invoke('get-character-config');
+                    if (c && statusMessage && !statusMessage.textContent) {
+                        statusMessage.textContent = c.defaultStatusMessage;
+                    }
+                } catch (_) {
+                    if (statusMessage && !statusMessage.textContent) statusMessage.textContent = '今天也要开开心心的哦！✨';
+                }
+            })();
 
             console.log('Pet status window script loaded successfully');
 
@@ -260,7 +271,14 @@
             // 如果出错，显示默认消息
             const statusMessage = document.getElementById('statusMessage');
             if (statusMessage) {
-                statusMessage.textContent = '喵～';
+                (async function() {
+                    try {
+                        const c = await require('electron').ipcRenderer.invoke('get-character-config');
+                        statusMessage.textContent = c ? c.errorFallbackMessage : '喵～';
+                    } catch (_) {
+                        statusMessage.textContent = '喵～';
+                    }
+                })();
             }
         }
     </script>

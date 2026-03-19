@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>和小黑聊天</title>
+    <title>聊天</title>
     <style>
         * {
             margin: 0;
@@ -274,10 +274,10 @@
 
 <body>
     <div class="chat-header">
-        <img class="chat-header-avatar" src="../assets/imgs/罗小黑的生活/pet.gif" alt="小黑">
+        <img class="chat-header-avatar" id="chatAvatar" src="" alt="桌宠">
         <div class="chat-header-info">
-            <div class="chat-header-name" id="petName">小黑</div>
-            <div class="chat-header-status">在线 · 随时陪你聊天</div>
+            <div class="chat-header-name" id="petName"></div>
+            <div class="chat-header-status" id="chatStatus">在线 · 随时陪你聊天</div>
         </div>
         <div class="chat-header-actions">
             <button class="header-btn" id="clearBtn" title="清空聊天">🗑️</button>
@@ -286,11 +286,11 @@
     </div>
 
     <div class="chat-messages" id="chatMessages">
-        <div class="welcome-message">开始和小黑聊天吧～</div>
+        <div class="welcome-message" id="welcomeMsg"></div>
     </div>
 
     <div class="typing-indicator" id="typingIndicator">
-        <img class="message-avatar" src="../assets/imgs/罗小黑的生活/pet.gif" alt="小黑">
+        <img class="message-avatar" id="typingAvatar" src="" alt="桌宠">
         <div class="typing-dots">
             <span></span><span></span><span></span>
         </div>
@@ -313,8 +313,33 @@
         const petNameEl = document.getElementById('petName');
 
         let isSending = false;
+        let petAvatarSrc = '';
+        let charName = '';
+
+        (async function initCharConfig() {
+            try {
+                const charConfig = await ipcRenderer.invoke('get-character-config');
+                if (charConfig) {
+                    const baseDir = charConfig.assets.baseDir;
+                    const defaultImg = charConfig.assets.defaultImage;
+                    const ab = charConfig.assetsBasePath;
+                    petAvatarSrc = ab ? `file:///${ab}/${baseDir}/${defaultImg}` : `../assets/imgs/${baseDir}/${defaultImg}`;
+                    charName = charConfig.name;
+
+                    document.getElementById('chatAvatar').src = petAvatarSrc;
+                    document.getElementById('typingAvatar').src = petAvatarSrc;
+                    petNameEl.textContent = charName;
+                    document.title = charConfig.ui.chatTitle.replace(/\{\{name\}\}/g, charName);
+                    document.getElementById('welcomeMsg').textContent = charConfig.ui.chatWelcome.replace(/\{\{name\}\}/g, charName);
+                    document.getElementById('chatStatus').textContent = charConfig.ui.chatOnlineStatus;
+                }
+            } catch (e) {
+                console.error('Failed to load character config:', e);
+            }
+        })();
 
         ipcRenderer.on('set-pet-name', (event, name) => {
+            charName = name;
             petNameEl.textContent = name;
         });
 
@@ -340,8 +365,13 @@
 
         sendBtn.addEventListener('click', sendMessage);
 
-        clearBtn.addEventListener('click', () => {
-            chatMessages.innerHTML = '<div class="welcome-message">聊天记录已清空，重新开始吧～</div>';
+        clearBtn.addEventListener('click', async () => {
+            let clearMsg = '聊天记录已清空，重新开始吧～';
+            try {
+                const charConfig = await ipcRenderer.invoke('get-character-config');
+                if (charConfig) clearMsg = charConfig.ui.chatCleared;
+            } catch (_) {}
+            chatMessages.innerHTML = `<div class="welcome-message">${clearMsg}</div>`;
             ipcRenderer.send('clear-chat-history');
         });
 
@@ -383,13 +413,11 @@
             row.className = `message-row ${role}`;
             if (!animate) row.style.animation = 'none';
 
-            const avatarSrc = role === 'pet'
-                ? '../assets/imgs/罗小黑的生活/pet.gif'
-                : '';
+            const avatarSrc = role === 'pet' ? petAvatarSrc : '';
 
             if (role === 'pet') {
                 row.innerHTML = `
-                    <img class="message-avatar" src="${avatarSrc}" alt="小黑">
+                    <img class="message-avatar" src="${avatarSrc}" alt="${charName || '桌宠'}">
                     <div class="message-bubble">${escapeHtml(text)}</div>
                 `;
             } else {
