@@ -98,6 +98,11 @@
             <span>待办事项</span>
         </div>
         <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="openDiaryWindow">
+            <span>📔</span>
+            <span>心情日记</span>
+        </div>
+        <div class="context-menu-separator"></div>
         <div class="context-menu-item" id="openPetSettings">
             <span>⚙️</span>
             <span>桌宠设置</span>
@@ -139,6 +144,11 @@
 
             openTodoWindow.addEventListener('click', () => {
                 ipcRenderer.send('open-todo-window');
+                window.close();
+            });
+
+            document.getElementById('openDiaryWindow').addEventListener('click', () => {
+                ipcRenderer.send('open-diary-window');
                 window.close();
             });
 

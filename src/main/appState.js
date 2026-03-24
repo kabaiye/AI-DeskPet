@@ -14,6 +14,7 @@ module.exports = {
   quickChatWindow: null,
   screenshotQuestionWindow: null,
   characterCreatorWindow: null,
+  diaryWindow: null,
   petStatusWindow: null,
   screenshots: null,
 
@@ -58,4 +59,7 @@ module.exports = {
   doNotDisturb: false,
   sedentaryMinutes: 52,
   waterMinutes: 60,
+
+  // 表情气泡定时器
+  emojiBubbleTimer: null,
 };

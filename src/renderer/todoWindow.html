@@ -541,8 +541,12 @@
         function completeTodo(id) {
             const todo = todos.find(t => t.id === id);
             if (todo) {
+                const wasCompleted = todo.completed;
                 todo.completed = !todo.completed;
                 todo.completedAt = todo.completed ? new Date().toISOString() : null;
+                if (!wasCompleted && todo.completed) {
+                    ipcRenderer.send('diary-record-event', 'todoCompleted');
+                }
                 saveTodos();
                 renderTodos();
                 updateStats();

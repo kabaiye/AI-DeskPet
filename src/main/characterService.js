@@ -63,12 +63,16 @@ function getAssetPath(filename) {
     return path.join(getAssetsDir(), char.assets.baseDir, filename);
 }
 
+function getEmotionFile(value) {
+    return typeof value === 'string' ? value : value.file;
+}
+
 function getEmotionMap() {
     const char = getCharacter();
     const map = {};
-    for (const [emotion, file] of Object.entries(char.assets.emotions)) {
+    for (const [emotion, value] of Object.entries(char.assets.emotions)) {
         if (emotion.startsWith('_')) continue;
-        map[emotion] = getAssetPath(file);
+        map[emotion] = getAssetPath(getEmotionFile(value));
     }
     return map;
 }
@@ -111,6 +115,10 @@ const PROMPT_BUILDERS = {
 
     pokeReaction(char, vars) {
         return `${vars.character}\n你是${char.name}。${vars.scenario}。\n\n要求：\n1. 根据主人的动作或话语，给出一个自然、有趣的回应\n2. 展现你的个性：${char.style.poke}\n3. 不超过25字，口语化，像真的在和主人聊天\n4. 从以下表情选一个最合适的：${vars.emotionList}\n5. 【重要】每次回复必须和之前的不同，不要重复已说过的话，尽量变换表达方式、语气和表情\n\n请严格按JSON格式回复：{"message":"你的回应","emotion":"表情名"}`;
+    },
+
+    diary(char, vars) {
+        return `${vars.character}\n你是${char.name}，正在写今天的心情日记。日期：${vars.date}\n\n${vars.summary}\n\n要求：\n1. 以第一人称（"我"）写一篇150-300字的心情日记\n2. 重点参考对话记录中的实际内容，写出真实发生的事情和你的感受，而不是泛泛地描述数字\n3. ${char.style.thought}\n4. 语气温暖、有个性，带有你独特的口吻\n5. 如果某项数据为0可以不提，聚焦有互动的部分\n6. 可以引用或化用对话中有趣、感动、印象深刻的片段\n7. 可以加入对主人的小心思、对明天的期待\n8. 不要用列表格式，写成流畅的日记文字`;
     }
 };
 

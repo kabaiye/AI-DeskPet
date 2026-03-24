@@ -1,7 +1,7 @@
 const { exec } = require('child_process');
 const path = require('path');
 
-console.log('🚀 开始打包 XiaoHeiCat 应用...');
+console.log('🚀 开始打包应用...');
 
 // 检查是否安装了electron-builder
 const checkElectronBuilder = () => {
@@ -58,7 +58,6 @@ const main = async () => {
         await buildApp();
         console.log('🎉 应用打包完成！');
         console.log('📁 输出目录: dist/');
-        console.log('📦 安装包: dist/XiaoHeiCat Setup.exe');
     } catch (error) {
         console.error('💥 打包过程中出现错误:', error);
         process.exit(1);

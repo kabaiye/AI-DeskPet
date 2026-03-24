@@ -57,7 +57,7 @@ function createMainWindow() {
 function createPetWindow() {
   state.petWindow = new BrowserWindow({
     width: 100,
-    height: 100,
+    height: 140,
     frame: false,
     alwaysOnTop: true,
     transparent: true,
@@ -77,7 +77,7 @@ function createPetWindow() {
   const { screen } = require('electron');
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width, height } = primaryDisplay.workAreaSize;
-  state.petWindow.setPosition(width - 120, height - 120);
+  state.petWindow.setPosition(width - 120, height - 160);
   state.petWindow.setIgnoreMouseEvents(false);
   state.petWindow.setMovable(true);
   state.petWindow.setAlwaysOnTop(true, 'screen-saver');
@@ -101,21 +101,6 @@ function createPetWindow() {
       clearInterval(ensureTopMost);
     }
   }, 5000);
-
-  state.petWindow.webContents.on('dom-ready', () => {
-    state.petWindow.webContents.executeJavaScript(`
-      try {
-        const pet = document.getElementById('pet');
-        if (pet) {
-          pet.addEventListener('click', () => {
-            require('electron').ipcRenderer.send('pet-clicked');
-          });
-        }
-      } catch (error) {
-        handleError(error, '桌宠点击监听');
-      }
-    `).catch(err => handleError(err, '桌宠窗口脚本'));
-  });
 
   return state.petWindow;
 }
@@ -352,7 +337,7 @@ function createContextMenuWindow(x, y) {
   }
 
   const win = new BrowserWindow({
-    width: 180, height: 220,
+    width: 180, height: 260,
     frame: false, alwaysOnTop: true, transparent: true,
     resizable: false, skipTaskbar: true, movable: false, focusable: true,
     parent: state.petWindow, modal: false,
@@ -363,7 +348,7 @@ function createContextMenuWindow(x, y) {
 
   const display = getPetDisplay();
   const wa = display.workArea;
-  const menuW = 180, menuH = 220;
+  const menuW = 180, menuH = 260;
   let fx = x, fy = y;
 
   if (fx + menuW > wa.x + wa.width) fx = wa.x + wa.width - menuW - 10;
@@ -539,6 +524,38 @@ function createScreenshotQuestionWindow() {
   state.screenshotQuestionWindow.on('closed', () => { state.screenshotQuestionWindow = null; });
 }
 
+function createDiaryWindow() {
+  try {
+    if (state.diaryWindow && !state.diaryWindow.isDestroyed()) {
+      state.diaryWindow.show();
+      state.diaryWindow.focus();
+      return state.diaryWindow;
+    }
+
+    state.diaryWindow = new BrowserWindow({
+      width: 680, height: 560,
+      frame: false, resizable: true,
+      skipTaskbar: false, movable: true, focusable: true, show: false,
+      webPreferences: { nodeIntegration: true, contextIsolation: false }
+    });
+
+    state.diaryWindow.loadFile(rendererPath('diaryWindow.html'));
+
+    const d = getPetDisplay();
+    const wa = d.workArea;
+    state.diaryWindow.setPosition(
+      Math.round(wa.x + (wa.width - 680) / 2),
+      Math.round(wa.y + (wa.height - 560) / 2)
+    );
+
+    state.diaryWindow.once('ready-to-show', () => { state.diaryWindow.show(); });
+    state.diaryWindow.on('closed', () => { state.diaryWindow = null; });
+    return state.diaryWindow;
+  } catch (error) {
+    handleError(error, '日记窗口');
+  }
+}
+
 function createCharacterCreatorWindow() {
   try {
     if (state.characterCreatorWindow && !state.characterCreatorWindow.isDestroyed()) {
@@ -607,6 +624,7 @@ module.exports = {
   createPetSettingsWindow,
   createScreenshotQuestionWindow,
   createCharacterCreatorWindow,
+  createDiaryWindow,
   showScreenshotBubble,
   togglePetWindow
 };

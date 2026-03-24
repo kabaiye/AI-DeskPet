@@ -9,9 +9,10 @@ const storage = require('./storageService');
 const config = require('./config');
 const cs = require('./characterService');
 const { analyzeScreenshot, generateFunReminder, generatePokeReaction,
-  updatePetSettings, chatWithPet, clearChatHistory } = require('./aiService');
+  updatePetSettings, chatWithPet, clearChatHistory, generateDiary } = require('./aiService');
 const wm = require('./windowManager');
 const sm = require('./shortcutManager');
+const diary = require('./diaryService');
 const { handleError, getFriendlyMessage } = require('./errorHandler');
 
 function parseScheduleFromReply(reply) {
@@ -39,6 +40,7 @@ function addTodoFromAI(content, reminderTime) {
   if (reminderTime) newTodo.reminderTime = reminderTime;
   todos.push(newTodo);
   storage.save('todos', todos);
+  diary.recordEvent('todoAdded');
   console.log('AI added todo:', content, reminderTime ? `remind at ${reminderTime}` : '');
 
   if (reminderTime) {
@@ -114,11 +116,14 @@ function triggerPoke() {
   state.pokeDebounceTimer = setTimeout(async () => {
     if (state.pokeProcessing) return;
     state.pokeProcessing = true;
+    diary.recordEvent('poke');
     try {
       const count = state.pokeCount;
       const { message, emotion } = await generatePokeReaction(count);
+      diary.recordChatLog('poke', `戳了第${count}次`, message);
       wm.createPetStatusWindow(message);
       if (emotion && state.petWindow && !state.petWindow.isDestroyed()) {
+        diary.recordEvent('emotion', { emotion });
         state.petWindow.webContents.send('change-emotion', emotion);
         setTimeout(() => {
           if (state.petWindow && !state.petWindow.isDestroyed()) {
@@ -375,6 +380,7 @@ function registerAll() {
 
   // === 聊天 ===
   ipcMain.on('chat-send-message', async (event, message) => {
+    diary.recordEvent('chat');
     state.chatDisplayMessages.push({ role: 'user', text: message });
     storage.save('chatHistory', state.chatDisplayMessages);
 
@@ -382,6 +388,7 @@ function registerAll() {
       onReply: (reply) => {
         state.chatDisplayMessages.push({ role: 'pet', text: reply });
         storage.save('chatHistory', state.chatDisplayMessages);
+        diary.recordChatLog('chat', message, reply);
         if (state.chatWindow && !state.chatWindow.isDestroyed()) {
           state.chatWindow.webContents.send('chat-reply', reply);
         }
@@ -405,6 +412,7 @@ function registerAll() {
 
   // === 快捷聊天 ===
   ipcMain.on('quick-chat-send', async (event, userMessage) => {
+    diary.recordEvent('chat');
     if (state.quickChatWindow && !state.quickChatWindow.isDestroyed()) {
       state.quickChatWindow.close();
     }
@@ -420,6 +428,7 @@ function registerAll() {
     await processChatReply(userMessage, {
       onReply: (reply) => {
         state.quickChatHistory.push({ role: 'assistant', content: reply });
+        diary.recordChatLog('chat', userMessage, reply);
         wm.createPetStatusWindow(reply);
         if (state.petWindow && !state.petWindow.isDestroyed()) {
           state.petWindow.webContents.send('change-emotion', '嘿嘿被夸了');
@@ -445,6 +454,7 @@ function registerAll() {
     }
     if (!state.pendingScreenshotBase64) return;
 
+    diary.recordEvent('screenshot');
     const base64 = state.pendingScreenshotBase64;
     state.pendingScreenshotBase64 = null;
 
@@ -452,6 +462,8 @@ function registerAll() {
       const result = await analyzeScreenshot(base64, question || '');
       const aiResponse = typeof result === 'string' ? JSON.parse(result) : result;
       handleAIResponse(aiResponse);
+      const screenshotReply = aiResponse?.message || aiResponse?.text || '';
+      if (screenshotReply) diary.recordChatLog('screenshot', question || '截图提问', screenshotReply);
     } catch (err) {
       handleError(err, '截图分析', wm.createPetStatusWindow);
       resetPetState();
@@ -468,6 +480,7 @@ function registerAll() {
   });
 
   ipcMain.on('water-confirmed', () => {
+    diary.recordEvent('waterReminder');
     if (state.waterReminderWindow && !state.waterReminderWindow.isDestroyed()) {
       state.waterReminderWindow.close();
     }
@@ -493,19 +506,35 @@ function registerAll() {
     const toSave = { ...settings };
     delete toSave.petName;
     delete toSave.petCharacter;
-    storage.save('settings', toSave);
-    if (settings.apiKey !== undefined) {
-      config.setApiKey(settings.apiKey);
+
+    const existing = storage.load('settings', {});
+
+    if (toSave.providerConfigs) {
+      const merged = existing.providerConfigs || {};
+      for (const [pid, pcfg] of Object.entries(toSave.providerConfigs)) {
+        merged[pid] = { ...(merged[pid] || {}), ...pcfg };
+      }
+      existing.providerConfigs = merged;
+      delete toSave.providerConfigs;
     }
-    if (settings.doNotDisturb !== undefined) {
-      state.doNotDisturb = settings.doNotDisturb;
+
+    storage.save('settings', { ...existing, ...toSave });
+
+    if (settings.activeProvider !== undefined) {
+      const all = storage.load('settings', {});
+      const activeCfg = (all.providerConfigs || {})[settings.activeProvider] || {};
+      config.setModelConfig({
+        provider: settings.activeProvider,
+        apiKey: activeCfg.apiKey,
+        baseUrl: activeCfg.baseUrl,
+        textModel: activeCfg.textModel,
+        visionModel: activeCfg.visionModel
+      });
     }
-    if (settings.sedentaryMinutes !== undefined) {
-      state.sedentaryMinutes = settings.sedentaryMinutes;
-    }
-    if (settings.waterMinutes !== undefined) {
-      state.waterMinutes = settings.waterMinutes;
-    }
+
+    if (settings.doNotDisturb !== undefined) state.doNotDisturb = settings.doNotDisturb;
+    if (settings.sedentaryMinutes !== undefined) state.sedentaryMinutes = settings.sedentaryMinutes;
+    if (settings.waterMinutes !== undefined) state.waterMinutes = settings.waterMinutes;
   });
 
   ipcMain.handle('load-settings', () => {
@@ -514,10 +543,21 @@ function registerAll() {
     return {
       ...rest,
       isAIConfigured: config.IS_AI_CONFIGURED,
+      activeProvider: config.AI_PROVIDER,
       doNotDisturb: state.doNotDisturb,
       sedentaryMinutes: state.sedentaryMinutes,
       waterMinutes: state.waterMinutes
     };
+  });
+
+  ipcMain.handle('get-ai-providers', () => config.AI_PROVIDERS);
+
+  ipcMain.handle('toggle-dnd', () => {
+    state.doNotDisturb = !state.doNotDisturb;
+    const s = storage.load('settings', {});
+    s.doNotDisturb = state.doNotDisturb;
+    storage.save('settings', s);
+    return state.doNotDisturb;
   });
 
   ipcMain.handle('get-character-config', () => cs.getCharacterForRenderer());
@@ -706,6 +746,70 @@ function registerAll() {
     };
   });
 
+  // === 悬浮工具栏 ===
+  ipcMain.on('toolbar-quick-chat', () => wm.createQuickChatWindow());
+
+  ipcMain.on('toolbar-screenshot', () => {
+    if (state.screenshots) {
+      try {
+        if (state.petWindow && !state.petWindow.isDestroyed()) {
+          state.petWindow.webContents.send('change-emotion', '好复杂');
+        }
+      } catch (_) { /* ignore */ }
+      wm.createPetStatusWindow('思考中…');
+      state.screenshots.startCapture();
+    } else {
+      wm.createPetStatusWindow('截图功能未初始化');
+    }
+  });
+
+  // === 心情日记 ===
+  ipcMain.on('open-diary-window', () => wm.createDiaryWindow());
+
+  ipcMain.handle('diary-get-list', () => diary.getDiaryList());
+
+  ipcMain.handle('diary-generate', async (event, dateKey) => {
+    try {
+      const dayData = diary.getDayData(dateKey);
+      const stats = dayData ? dayData.stats : { pokeCount: 0, chatCount: 0, screenshotCount: 0, todosAdded: 0, todosCompleted: 0, waterReminders: 0, emotionChanges: [] };
+      const text = await generateDiary(dateKey, stats);
+      diary.saveDiaryEntry(dateKey, text);
+      return { success: true };
+    } catch (err) {
+      handleError(err, '生成日记');
+      return { success: false, error: getFriendlyMessage(err, '生成日记') };
+    }
+  });
+
+  ipcMain.on('diary-record-event', (event, eventType, data) => {
+    diary.recordEvent(eventType, data);
+  });
+
+  // === 开机自启 ===
+  ipcMain.handle('get-auto-launch', () => {
+    return app.getLoginItemSettings().openAtLogin;
+  });
+
+  ipcMain.on('set-auto-launch', (event, enabled) => {
+    app.setLoginItemSettings({ openAtLogin: enabled });
+    console.log('Auto launch set to:', enabled);
+  });
+
+  // === 保存/恢复宠物窗口位置 ===
+  ipcMain.on('save-pet-position', () => {
+    if (state.petWindow && !state.petWindow.isDestroyed()) {
+      const [x, y] = state.petWindow.getPosition();
+      storage.save('petPosition', { x, y });
+    }
+  });
+
+  // === 表情气泡 ===
+  ipcMain.on('emoji-bubble-tick', () => {
+    if (state.petWindow && !state.petWindow.isDestroyed() && !state.doNotDisturb) {
+      state.petWindow.webContents.send('show-emoji-bubble');
+    }
+  });
+
   return actionHandlers;
 }
 
@@ -717,6 +821,7 @@ function handleAIResponse(aiResponse) {
   if (message) wm.createPetStatusWindow(message);
 
   if (emotion && state.petWindow && !state.petWindow.isDestroyed()) {
+    diary.recordEvent('emotion', { emotion });
     state.petWindow.webContents.send('change-emotion', emotion);
     setPetState(emotion);
   } else {

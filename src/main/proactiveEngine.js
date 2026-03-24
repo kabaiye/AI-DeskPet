@@ -5,6 +5,7 @@ const {
     generateMilestoneMessage
 } = require('./aiService');
 const state = require('./appState');
+const diary = require('./diaryService');
 
 const store = new Store();
 
@@ -139,6 +140,7 @@ function scheduleLateNightCare() {
 function emitMessage(result) {
     if (!result || !result.message) return;
 
+    diary.recordChatLog('proactive', null, result.message);
     console.log(`[Proactive] ${result.emotion}: ${result.message}`);
 
     if (changeEmotionFn && result.emotion) {

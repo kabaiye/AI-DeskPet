@@ -20,9 +20,8 @@
 
         .pet-container {
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: transform 0.2s ease;
             -webkit-app-region: no-drag;
-            /* 点击区域不拖动 */
             position: fixed;
             z-index: 10;
             display: flex;
@@ -30,9 +29,8 @@
             align-items: center;
             width: 80px;
             height: 80px;
-            /* 初始位置在右下角 */
-            right: 20px;
-            bottom: 20px;
+            right: 10px;
+            bottom: 10px;
         }
 
         .pet-container:hover {
@@ -50,23 +48,121 @@
             border-radius: 50%;
             object-fit: cover;
             pointer-events: none;
-            /* 确保点击事件传递给父容器 */
             user-select: none;
-            /* 防止图片被选中 */
         }
 
-
-
-        /* 拖拽提示 */
-        .pet-container::after {
-            content: '↕';
-            position: absolute;
-            top: -15px;
-            right: -15px;
-            font-size: 12px;
-            color: #999;
+        /* === 悬浮工具栏 === */
+        .pet-toolbar {
+            position: fixed;
+            top: 6px;
+            left: 50%;
+            transform: translateX(-50%) translateY(6px);
+            display: flex;
+            gap: 5px;
+            z-index: 20;
+            opacity: 0;
+            transition: opacity 0.25s ease, transform 0.25s ease;
             pointer-events: none;
-            opacity: 0.6;
+            -webkit-app-region: no-drag;
+        }
+
+        .pet-toolbar.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
+
+        .toolbar-btn {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(0, 0, 0, 0.06);
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            position: relative;
+            padding: 0;
+        }
+
+        .toolbar-btn:hover {
+            transform: scale(1.18);
+            background: white;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
+        }
+
+        .toolbar-btn:active {
+            transform: scale(0.92);
+        }
+
+        .toolbar-btn svg {
+            width: 11px;
+            height: 11px;
+        }
+
+        .toolbar-btn .tooltip {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.72);
+            color: #fff;
+            font-size: 9px;
+            padding: 1px 5px;
+            border-radius: 3px;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            pointer-events: none;
+            font-family: -apple-system, 'Microsoft YaHei', sans-serif;
+        }
+
+        .toolbar-btn:hover .tooltip {
+            opacity: 1;
+        }
+
+        .toolbar-btn.dnd-active {
+            background: rgba(255, 140, 0, 0.9);
+            border-color: rgba(255, 140, 0, 0.3);
+        }
+
+        .toolbar-btn.dnd-active svg {
+            stroke: #fff;
+        }
+
+        .toolbar-btn.dnd-active:hover {
+            background: rgba(255, 120, 0, 1);
+        }
+
+        .emoji-bubble {
+            position: fixed;
+            font-size: 18px;
+            pointer-events: none;
+            z-index: 5;
+            animation: float-up 3s ease-out forwards;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
+        }
+
+        @keyframes float-up {
+            0% {
+                opacity: 0.9;
+                transform: translateY(0) scale(0.5) rotate(0deg);
+            }
+            20% {
+                opacity: 1;
+                transform: translateY(-15px) scale(1) rotate(-5deg);
+            }
+            80% {
+                opacity: 0.6;
+                transform: translateY(-55px) scale(0.9) rotate(8deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-75px) scale(0.7) rotate(-3deg);
+            }
         }
 
         /* 吸附动画 - 暂时注释掉 */
@@ -125,6 +221,38 @@
 </head>
 
 <body>
+    <div class="pet-toolbar" id="petToolbar">
+        <button class="toolbar-btn" id="quickChatBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span class="tooltip">快捷提问</span>
+        </button>
+        <button class="toolbar-btn" id="screenshotBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 3h4"/><path d="M4 3v4"/>
+                <path d="M20 3h-4"/><path d="M20 3v4"/>
+                <path d="M4 21h4"/><path d="M4 21v-4"/>
+                <path d="M20 21h-4"/><path d="M20 21v-4"/>
+            </svg>
+            <span class="tooltip">截图提问</span>
+        </button>
+        <button class="toolbar-btn" id="dndBtn">
+            <svg class="dnd-icon-off" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <svg class="dnd-icon-on" style="display:none" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                <path d="M18.63 13A17.89 17.89 0 0 1 18 8"/>
+                <path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/>
+                <path d="M18 8a6 6 0 0 0-9.33-5"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+            <span class="tooltip">勿扰模式</span>
+        </button>
+    </div>
+
     <div class="pet-container" id="pet">
         <img class="pet-image" id="petImage" src="" alt="桌宠" />
     </div>
@@ -134,16 +262,82 @@
     <script>
         const pet = document.getElementById('pet');
         const petImage = document.getElementById('petImage');
+        const petToolbar = document.getElementById('petToolbar');
         const { ipcRenderer: petIpc } = require('electron');
 
+        // === 悬浮工具栏逻辑 ===
+        let toolbarHideTimer = null;
+
+        function showToolbar() {
+            clearTimeout(toolbarHideTimer);
+            petToolbar.classList.add('visible');
+        }
+
+        function hideToolbar(delay = 400) {
+            clearTimeout(toolbarHideTimer);
+            toolbarHideTimer = setTimeout(() => {
+                petToolbar.classList.remove('visible');
+            }, delay);
+        }
+
+        document.addEventListener('mouseenter', () => showToolbar());
+        document.addEventListener('mouseleave', () => hideToolbar(300));
+
+        petToolbar.addEventListener('mouseenter', () => showToolbar());
+        petToolbar.addEventListener('mouseleave', () => hideToolbar(300));
+
+        document.getElementById('quickChatBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            petIpc.send('toolbar-quick-chat');
+        });
+
+        document.getElementById('screenshotBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            petIpc.send('toolbar-screenshot');
+        });
+
+        const dndBtn = document.getElementById('dndBtn');
+        const dndIconOff = dndBtn.querySelector('.dnd-icon-off');
+        const dndIconOn = dndBtn.querySelector('.dnd-icon-on');
+        let isDnd = false;
+
+        function updateDndUI(active) {
+            isDnd = active;
+            dndIconOff.style.display = active ? 'none' : '';
+            dndIconOn.style.display = active ? '' : 'none';
+            dndBtn.classList.toggle('dnd-active', active);
+        }
+
+        dndBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const newState = await petIpc.invoke('toggle-dnd');
+            updateDndUI(newState);
+        });
+        dndBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+
+        petIpc.invoke('load-settings').then(s => {
+            if (s) updateDndUI(!!s.doNotDisturb);
+        });
+
+        document.getElementById('quickChatBtn').addEventListener('mousedown', (e) => e.stopPropagation());
+        document.getElementById('screenshotBtn').addEventListener('mousedown', (e) => e.stopPropagation());
+
         let emotionMap = {};
+        let emotionOpaqueMap = {};
         let charAssets = null;
         let assetsBase = '';
 
         function assetPath(filename) {
-            const baseDir = charAssets ? charAssets.baseDir : '罗小黑的生活';
+            const baseDir = charAssets ? charAssets.baseDir : '罗小黑';
             if (assetsBase) return `file:///${assetsBase}/${baseDir}/${filename}`;
             return `../assets/imgs/${baseDir}/${filename}`;
+        }
+
+        function applyOpaque(opaque) {
+            petImage.style.backgroundColor = opaque ? 'white' : 'transparent';
         }
 
         (async function initCharacter() {
@@ -153,8 +347,16 @@
                     charAssets = charConfig.assets;
                     assetsBase = charConfig.assetsBasePath || '';
                     emotionMap = {};
-                    for (const [emotion, file] of Object.entries(charAssets.emotions)) {
-                        emotionMap[emotion] = assetPath(file);
+                    emotionOpaqueMap = {};
+                    for (const [emotion, value] of Object.entries(charAssets.emotions)) {
+                        if (emotion.startsWith('_')) continue;
+                        if (typeof value === 'string') {
+                            emotionMap[emotion] = assetPath(value);
+                            emotionOpaqueMap[emotion] = false;
+                        } else {
+                            emotionMap[emotion] = assetPath(value.file);
+                            emotionOpaqueMap[emotion] = !!value.opaque;
+                        }
                     }
                 }
             } catch (e) {
@@ -171,15 +373,17 @@
 
             if (hour >= 20) {
                 petImage.src = assetPath(nightImg);
+                applyOpaque(charAssets && !!charAssets.idleNightImageOpaque);
             } else {
                 petImage.src = assetPath(defaultImg);
+                applyOpaque(charAssets && !!charAssets.defaultImageOpaque);
             }
         }
 
-        // 切换表情函数
         function changeEmotion(emotion) {
             if (emotionMap[emotion]) {
                 petImage.src = emotionMap[emotion];
+                applyOpaque(emotionOpaqueMap[emotion]);
                 console.log('切换到表情:', emotion);
             } else {
                 console.log('未知表情:', emotion);
@@ -353,6 +557,51 @@
             });
         } catch (error) {
             console.error('Error setting up reset emotion listener:', error);
+        }
+
+        // === 表情气泡功能 ===
+        const EMOJI_POOLS = {
+            morning: ['☀️', '🌅', '☕', '🥐', '🌤️', '🐦', '🌻', '💪'],
+            afternoon: ['📝', '🎵', '🌸', '💻', '🍵', '🌈', '✨', '🎯'],
+            evening: ['🌙', '🌟', '🎮', '📖', '🍕', '🎧', '💫', '🌆'],
+            night: ['😴', '💤', '🌙', '⭐', '🛏️', '🧸', '🌌', '💭'],
+            fun: ['🎈', '🎉', '🦋', '🍀', '🎶', '🌈', '💖', '🐾', '🎪', '🧩', '🪄', '✨']
+        };
+
+        function getEmojiPool() {
+            const hour = new Date().getHours();
+            if (hour >= 5 && hour < 12) return [...EMOJI_POOLS.morning, ...EMOJI_POOLS.fun];
+            if (hour >= 12 && hour < 18) return [...EMOJI_POOLS.afternoon, ...EMOJI_POOLS.fun];
+            if (hour >= 18 && hour < 22) return [...EMOJI_POOLS.evening, ...EMOJI_POOLS.fun];
+            return [...EMOJI_POOLS.night, ...EMOJI_POOLS.fun];
+        }
+
+        function showEmojiBubble() {
+            const pool = getEmojiPool();
+            const emoji = pool[Math.floor(Math.random() * pool.length)];
+
+            const el = document.createElement('div');
+            el.className = 'emoji-bubble';
+            el.textContent = emoji;
+
+            const offsetX = Math.random() * 60 - 30;
+            el.style.left = `${50 + offsetX}px`;
+            el.style.bottom = '70px';
+
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 3200);
+        }
+
+        try {
+            require('electron').ipcRenderer.on('show-emoji-bubble', () => {
+                showEmojiBubble();
+                const extraCount = Math.random() < 0.3 ? 1 : 0;
+                for (let i = 0; i < extraCount; i++) {
+                    setTimeout(() => showEmojiBubble(), 600 + Math.random() * 800);
+                }
+            });
+        } catch (error) {
+            console.error('Error setting up emoji bubble listener:', error);
         }
 
         console.log('Pet with drag and emotion support loaded');

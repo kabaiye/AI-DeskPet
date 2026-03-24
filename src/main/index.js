@@ -18,6 +18,22 @@ const sm = require('./shortcutManager');
 const ipc = require('./ipcHandlers');
 const { handleError } = require('./errorHandler');
 
+const EMOJI_BUBBLE_MIN = 3 * 60 * 1000;
+const EMOJI_BUBBLE_MAX = 8 * 60 * 1000;
+
+function startEmojiBubbleTimer() {
+  function scheduleNext() {
+    const delay = EMOJI_BUBBLE_MIN + Math.random() * (EMOJI_BUBBLE_MAX - EMOJI_BUBBLE_MIN);
+    state.emojiBubbleTimer = setTimeout(() => {
+      if (!state.doNotDisturb && state.petWindow && !state.petWindow.isDestroyed()) {
+        state.petWindow.webContents.send('show-emoji-bubble');
+      }
+      scheduleNext();
+    }, delay);
+  }
+  scheduleNext();
+}
+
 app.disableHardwareAcceleration();
 app.setAppUserModelId('com.ai-deskpet.app');
 Menu.setApplicationMenu(null);
@@ -54,9 +70,9 @@ function checkAndShowPetSettingsOnStartup() {
   const char = cs.getCharacter();
   const defaults = { petName: char.name, petCharacter: char.personality.default };
   updatePetSettings(defaults);
+  config.loadModelConfig();
   const globalSettings = storage.load('settings', null);
   if (globalSettings) {
-    if (globalSettings.apiKey) config.setApiKey(globalSettings.apiKey);
     if (globalSettings.doNotDisturb !== undefined) state.doNotDisturb = globalSettings.doNotDisturb;
     if (globalSettings.sedentaryMinutes !== undefined) state.sedentaryMinutes = globalSettings.sedentaryMinutes;
     if (globalSettings.waterMinutes !== undefined) state.waterMinutes = globalSettings.waterMinutes;
@@ -71,9 +87,27 @@ app.whenReady().then(() => {
   config.loadApiKeyFromStorage();
   state.chatDisplayMessages = storage.load('chatHistory', []);
 
+  const diary = require('./diaryService');
+  diary.ensureToday();
+
   setTimeout(() => {
     wm.createMainWindow();
     wm.createPetWindow();
+
+    const savedPos = storage.load('petPosition', null);
+    if (savedPos && state.petWindow && !state.petWindow.isDestroyed()) {
+      const { screen } = require('electron');
+      const displays = screen.getAllDisplays();
+      const inBounds = displays.some(d => {
+        const wa = d.workArea;
+        return savedPos.x >= wa.x && savedPos.x < wa.x + wa.width &&
+               savedPos.y >= wa.y && savedPos.y < wa.y + wa.height;
+      });
+      if (inBounds) {
+        state.petWindow.setPosition(savedPos.x, savedPos.y);
+      }
+    }
+
     setupScreenshots();
 
     const actionHandlers = ipc.registerAll();
@@ -100,6 +134,8 @@ app.whenReady().then(() => {
     });
 
     checkAndShowPetSettingsOnStartup();
+
+    startEmojiBubbleTimer();
   }, 1000);
 }).catch(err => {
   handleError(err, '应用初始化');
@@ -117,8 +153,16 @@ app.on('window-all-closed', () => {
 });
 
 app.on('will-quit', () => {
+  if (state.petWindow && !state.petWindow.isDestroyed()) {
+    const [x, y] = state.petWindow.getPosition();
+    storage.save('petPosition', { x, y });
+  }
   globalShortcut.unregisterAll();
   if (state.activityMonitor) state.activityMonitor.destroy();
   proactiveEngine.destroy();
   ipc.stopTodoReminder();
+  if (state.emojiBubbleTimer) {
+    clearTimeout(state.emojiBubbleTimer);
+    state.emojiBubbleTimer = null;
+  }
 });

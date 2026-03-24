@@ -140,6 +140,11 @@ body {
 .emotion-entry .file-pick-btn { padding: 5px 10px; font-size: 11px; }
 .emotion-entry .file-pick-preview { width: 36px; height: 36px; border-radius: 6px; }
 .emotion-entry .file-pick-name { font-size: 11px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.emotion-entry .em-opaque-label {
+    display: flex; align-items: center; gap: 3px;
+    font-size: 11px; color: #8a9fba; white-space: nowrap; flex-shrink: 0; cursor: pointer;
+}
+.emotion-entry .em-opaque-label input { width: 14px; height: 14px; accent-color: #4a6cf7; cursor: pointer; }
 .emotion-entry .em-remove {
     width: 22px; height: 22px; border: none; border-radius: 50%;
     background: rgba(245,101,101,0.1); color: #f56565; font-size: 14px;
@@ -608,7 +613,9 @@ async function saveCharacter() {
     for (const entry of emotionEntries) {
         const emName = entry.name.trim();
         if (!emName || !entry.file) continue;
-        emotionMap[emName] = entry.file.name;
+        emotionMap[emName] = entry.opaque
+            ? { file: entry.file.name, opaque: true }
+            : entry.file.name;
         emotionNames.push(emName);
         if (!entry.file._existing) {
             filesToCopy.push({ name: entry.file.name, sourcePath: entry.file.path });
@@ -731,7 +738,7 @@ function sanitizeEmotionName(val) {
 
 function addEmotionEntry(preset) {
     const eid = emotionIdCounter++;
-    const entry = { id: eid, name: preset?.name || '', file: preset?.file || null };
+    const entry = { id: eid, name: preset?.name || '', file: preset?.file || null, opaque: preset?.opaque || false };
     emotionEntries.push(entry);
     renderEmotionList();
     return eid;
@@ -759,18 +766,26 @@ function onEmotionNameChange(eid, val) {
     if (entry) entry.name = sanitizeEmotionName(val);
 }
 
+function onEmotionOpaqueChange(eid, checked) {
+    const entry = emotionEntries.find(e => e.id === eid);
+    if (entry) entry.opaque = checked;
+}
+
 function renderEmotionList() {
     const container = document.getElementById('emotionList');
     container.innerHTML = emotionEntries.map(entry => {
         const hasFile = !!entry.file;
         const imgSrc = hasFile ? `file:///${entry.file.path.replace(/\\/g, '/')}` : '';
         const fname = hasFile ? entry.file.name : '未选择';
+        const previewStyle = (hasFile && entry.opaque) ? 'background-color:white' : '';
         return `<div class="emotion-entry" data-eid="${entry.id}">
             <input class="em-name-input" type="text" value="${entry.name}" placeholder="表情名称"
                 maxlength="15" oninput="onEmotionNameChange(${entry.id}, this.value)">
-            <img class="file-pick-preview ${hasFile ? 'has-img' : ''}" src="${imgSrc}">
+            <img class="file-pick-preview ${hasFile ? 'has-img' : ''}" src="${imgSrc}" style="${previewStyle}">
             <button class="file-pick-btn" onclick="pickEmotionFileFor(${entry.id})">选择</button>
             <span class="file-pick-name">${fname}</span>
+            <label class="em-opaque-label"><input type="checkbox" ${entry.opaque ? 'checked' : ''}
+                onchange="onEmotionOpaqueChange(${entry.id}, this.checked)">白底</label>
             <button class="em-remove" onclick="removeEmotionEntry(${entry.id})">×</button>
         </div>`;
     }).join('');
@@ -782,7 +797,7 @@ async function batchImportEmotions() {
     result.files.forEach(f => {
         const name = sanitizeEmotionName(f.name.replace(/\.[^.]+$/, ''));
         const eid = emotionIdCounter++;
-        emotionEntries.push({ id: eid, name, file: f });
+        emotionEntries.push({ id: eid, name, file: f, opaque: false });
     });
     renderEmotionList();
     showToast(`已导入 ${result.files.length} 个表情`);
@@ -859,12 +874,14 @@ async function initEditMode() {
         }
 
         if (d.assets.emotions) {
-            for (const [emName, emFile] of Object.entries(d.assets.emotions)) {
+            for (const [emName, emValue] of Object.entries(d.assets.emotions)) {
                 if (emName.startsWith('_')) continue;
+                const emFile = typeof emValue === 'string' ? emValue : emValue.file;
+                const emOpaque = typeof emValue === 'object' ? !!emValue.opaque : false;
                 if (emFile === d.assets.defaultImage) continue;
                 const imgPath = `${assetsBase}/${baseDir}/${emFile}`;
                 const eid = emotionIdCounter++;
-                emotionEntries.push({ id: eid, name: emName, file: { name: emFile, path: imgPath, _existing: true } });
+                emotionEntries.push({ id: eid, name: emName, file: { name: emFile, path: imgPath, _existing: true }, opaque: emOpaque });
             }
             renderEmotionList();
         }

@@ -315,6 +315,7 @@
         let isSending = false;
         let petAvatarSrc = '';
         let charName = '';
+        let avatarOpaque = false;
 
         (async function initCharConfig() {
             try {
@@ -325,9 +326,14 @@
                     const ab = charConfig.assetsBasePath;
                     petAvatarSrc = ab ? `file:///${ab}/${baseDir}/${defaultImg}` : `../assets/imgs/${baseDir}/${defaultImg}`;
                     charName = charConfig.name;
+                    avatarOpaque = !!charConfig.assets.defaultImageOpaque;
 
                     document.getElementById('chatAvatar').src = petAvatarSrc;
                     document.getElementById('typingAvatar').src = petAvatarSrc;
+                    if (avatarOpaque) {
+                        document.getElementById('chatAvatar').style.backgroundColor = 'white';
+                        document.getElementById('typingAvatar').style.backgroundColor = 'white';
+                    }
                     petNameEl.textContent = charName;
                     document.title = charConfig.ui.chatTitle.replace(/\{\{name\}\}/g, charName);
                     document.getElementById('welcomeMsg').textContent = charConfig.ui.chatWelcome.replace(/\{\{name\}\}/g, charName);
@@ -416,8 +422,9 @@
             const avatarSrc = role === 'pet' ? petAvatarSrc : '';
 
             if (role === 'pet') {
+                const bgStyle = avatarOpaque ? ' style="background-color:white"' : '';
                 row.innerHTML = `
-                    <img class="message-avatar" src="${avatarSrc}" alt="${charName || '桌宠'}">
+                    <img class="message-avatar" src="${avatarSrc}" alt="${charName || '桌宠'}"${bgStyle}>
                     <div class="message-bubble">${escapeHtml(text)}</div>
                 `;
             } else {

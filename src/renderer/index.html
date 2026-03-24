@@ -201,7 +201,7 @@
             </div>
             <div class="shortcut-row" data-action="ai-screenshot">
                 <span class="shortcut-key">Alt+F2</span>
-                <span class="shortcut-label">AI 截图 <span class="desc">截图后可附加问题一起发送</span></span>
+                <span class="shortcut-label">截图提问<span class="desc">截图后可附加问题一起发送</span></span>
             </div>
             <div class="shortcut-row" data-action="poke-pet">
                 <span class="shortcut-key">Alt+F3</span>
@@ -264,8 +264,10 @@
                     const baseDir = c.assets.baseDir;
                     const defaultImg = c.assets.defaultImage;
                     const ab = c.assetsBasePath;
-                    document.getElementById('mainLogo').src = ab ? `file:///${ab}/${baseDir}/${defaultImg}` : `../assets/imgs/${baseDir}/${defaultImg}`;
-                    document.getElementById('mainLogo').alt = name;
+                    const logoEl = document.getElementById('mainLogo');
+                    logoEl.src = ab ? `file:///${ab}/${baseDir}/${defaultImg}` : `../assets/imgs/${baseDir}/${defaultImg}`;
+                    logoEl.alt = name;
+                    if (c.assets.defaultImageOpaque) logoEl.style.backgroundColor = 'white';
                     document.getElementById('mainTitle').textContent = c.displayName;
                     document.getElementById('mainSubtitle').textContent = c.subtitle;
                     document.getElementById('mainStatus').textContent = c.statusOnline;

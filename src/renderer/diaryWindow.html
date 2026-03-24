@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>心情日记</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', Roboto, sans-serif;
+            background: linear-gradient(135deg, #fdf6e3 0%, #fff5f5 50%, #f0f4ff 100%);
+            color: #4a4a4a;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            border-radius: 10px;
+            border: 1px solid rgba(200, 160, 100, 0.15);
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #d4a574 0%, #e8c19a 100%);
+            color: white;
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            -webkit-app-region: drag;
+            box-shadow: 0 2px 10px rgba(180, 140, 80, 0.2);
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 17px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .close-btn {
+            width: 28px; height: 28px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none; border-radius: 50%;
+            color: white; font-size: 18px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            -webkit-app-region: no-drag;
+            transition: all 0.2s;
+        }
+        .close-btn:hover { background: rgba(255, 255, 255, 0.35); transform: scale(1.1); }
+
+        .content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .diary-list {
+            width: 180px;
+            border-right: 1px solid rgba(200, 160, 100, 0.15);
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.5);
+            flex-shrink: 0;
+        }
+
+        .diary-list::-webkit-scrollbar { width: 4px; }
+        .diary-list::-webkit-scrollbar-thumb { background: rgba(200, 160, 100, 0.3); border-radius: 2px; }
+
+        .diary-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(200, 160, 100, 0.08);
+            transition: all 0.2s;
+        }
+        .diary-item:hover { background: rgba(212, 165, 116, 0.08); }
+        .diary-item.active {
+            background: rgba(212, 165, 116, 0.15);
+            border-left: 3px solid #d4a574;
+        }
+
+        .diary-item-date {
+            font-size: 14px;
+            font-weight: 600;
+            color: #8b6f47;
+        }
+
+        .diary-item-weekday {
+            font-size: 11px;
+            color: #b89a6a;
+            margin-top: 2px;
+        }
+
+        .diary-item-badge {
+            display: inline-block;
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 8px;
+            margin-top: 4px;
+        }
+        .diary-item-badge.has-diary {
+            background: rgba(72, 187, 120, 0.15);
+            color: #38a169;
+        }
+        .diary-item-badge.no-diary {
+            background: rgba(200, 160, 100, 0.12);
+            color: #b89a6a;
+        }
+
+        .diary-detail {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .detail-header {
+            padding: 16px 20px 12px;
+            border-bottom: 1px solid rgba(200, 160, 100, 0.1);
+            flex-shrink: 0;
+        }
+
+        .detail-date {
+            font-size: 20px;
+            font-weight: 700;
+            color: #8b6f47;
+        }
+
+        .detail-weekday {
+            font-size: 12px;
+            color: #b89a6a;
+            margin-top: 2px;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .stat-tag {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            background: rgba(212, 165, 116, 0.1);
+            color: #8b6f47;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .stat-tag .num {
+            font-weight: 700;
+            color: #d4a574;
+        }
+
+        .detail-body {
+            flex: 1;
+            padding: 16px 20px;
+            overflow-y: auto;
+        }
+        .detail-body::-webkit-scrollbar { width: 4px; }
+        .detail-body::-webkit-scrollbar-thumb { background: rgba(200, 160, 100, 0.3); border-radius: 2px; }
+
+        .diary-text {
+            font-size: 14px;
+            line-height: 1.8;
+            color: #5a4a3a;
+            white-space: pre-wrap;
+            user-select: text;
+            font-family: 'Georgia', 'Microsoft YaHei', serif;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            gap: 12px;
+            color: #b89a6a;
+        }
+
+        .empty-state .icon { font-size: 40px; }
+
+        .empty-state .text {
+            font-size: 14px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .generate-btn {
+            padding: 10px 24px;
+            background: linear-gradient(135deg, #d4a574 0%, #e8c19a 100%);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(212, 165, 116, 0.4);
+        }
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .generating-hint {
+            font-size: 12px;
+            color: #b89a6a;
+            margin-top: 8px;
+            display: none;
+        }
+        .generating-hint.show { display: block; }
+
+        .diary-generated-at {
+            font-size: 11px;
+            color: #c4a882;
+            text-align: right;
+            margin-top: 12px;
+            font-style: italic;
+        }
+
+        .no-data-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #c4a882;
+            gap: 8px;
+        }
+        .no-data-state .icon { font-size: 36px; }
+        .no-data-state .text { font-size: 13px; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📔 心情日记</h1>
+            <button class="close-btn" id="closeBtn">×</button>
+        </div>
+
+        <div class="content">
+            <div class="diary-list" id="diaryList">
+                <div class="no-data-state" id="noDataHint">
+                    <div class="icon">📝</div>
+                    <div class="text">还没有记录哦</div>
+                </div>
+            </div>
+
+            <div class="diary-detail" id="diaryDetail">
+                <div class="no-data-state">
+                    <div class="icon">👈</div>
+                    <div class="text">选择一天查看日记</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        let diaryData = [];
+        let selectedDate = null;
+        let petName = '';
+
+        (async function init() {
+            try {
+                const charConfig = await ipcRenderer.invoke('get-character-config');
+                if (charConfig) petName = charConfig.name;
+            } catch (_) {}
+            await loadDiaryList();
+        })();
+
+        async function loadDiaryList() {
+            diaryData = await ipcRenderer.invoke('diary-get-list');
+            renderList();
+        }
+
+        function getWeekday(dateStr) {
+            const d = new Date(dateStr + 'T00:00:00');
+            return ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()];
+        }
+
+        function isToday(dateStr) {
+            const now = new Date();
+            const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            return dateStr === today;
+        }
+
+        function renderList() {
+            const container = document.getElementById('diaryList');
+            const noData = document.getElementById('noDataHint');
+
+            if (diaryData.length === 0) {
+                container.innerHTML = '';
+                container.appendChild(noData);
+                return;
+            }
+
+            container.innerHTML = '';
+            diaryData.forEach(item => {
+                const el = document.createElement('div');
+                el.className = `diary-item${item.date === selectedDate ? ' active' : ''}`;
+                el.dataset.date = item.date;
+
+                const dateLabel = isToday(item.date) ? '今天' : item.date.slice(5);
+                const weekday = getWeekday(item.date);
+                const badgeClass = item.hasDiary ? 'has-diary' : 'no-diary';
+                const badgeText = item.hasDiary ? '已写日记' : '待生成';
+
+                el.innerHTML = `
+                    <div class="diary-item-date">${dateLabel}</div>
+                    <div class="diary-item-weekday">${weekday}${isToday(item.date) ? ' · 今天' : ''}</div>
+                    <span class="diary-item-badge ${badgeClass}">${badgeText}</span>
+                `;
+
+                el.addEventListener('click', () => selectDay(item.date));
+                container.appendChild(el);
+            });
+        }
+
+        function selectDay(dateKey) {
+            selectedDate = dateKey;
+            renderList();
+            renderDetail(dateKey);
+        }
+
+        function renderDetail(dateKey) {
+            const item = diaryData.find(d => d.date === dateKey);
+            if (!item) return;
+
+            const detail = document.getElementById('diaryDetail');
+            const weekday = getWeekday(dateKey);
+            const dateLabel = isToday(dateKey) ? '今天' : dateKey;
+
+            const stats = item.stats;
+            const statTags = [];
+            if (stats.pokeCount > 0) statTags.push(`<span class="stat-tag">戳一戳 <span class="num">${stats.pokeCount}</span></span>`);
+            if (stats.chatCount > 0) statTags.push(`<span class="stat-tag">聊天 <span class="num">${stats.chatCount}</span></span>`);
+            if (stats.screenshotCount > 0) statTags.push(`<span class="stat-tag">截图 <span class="num">${stats.screenshotCount}</span></span>`);
+            if (stats.todosAdded > 0) statTags.push(`<span class="stat-tag">添加待办 <span class="num">${stats.todosAdded}</span></span>`);
+            if (stats.todosCompleted > 0) statTags.push(`<span class="stat-tag">完成待办 <span class="num">${stats.todosCompleted}</span></span>`);
+            if (stats.waterReminders > 0) statTags.push(`<span class="stat-tag">喝水 <span class="num">${stats.waterReminders}</span></span>`);
+
+            if (statTags.length === 0) statTags.push('<span class="stat-tag">今天还没有互动记录</span>');
+
+            let bodyHtml;
+            if (item.hasDiary) {
+                bodyHtml = `
+                    <div class="diary-text fade-in">${escapeHtml(item.diary)}</div>
+                    ${item.generatedAt ? `<div class="diary-generated-at">— ${petName} 写于 ${new Date(item.generatedAt).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>` : ''}
+                    <div style="text-align:center;margin-top:16px">
+                        <button class="generate-btn" onclick="generateDiary('${dateKey}')" style="font-size:12px;padding:6px 16px;background:rgba(212,165,116,0.2);color:#8b6f47">重新生成</button>
+                    </div>
+                `;
+            } else {
+                bodyHtml = `
+                    <div class="empty-state fade-in">
+                        <div class="icon">✏️</div>
+                        <div class="text">${petName || '桌宠'}还没有写这天的日记<br>点击下方按钮让${petName || 'TA'}写一篇吧</div>
+                        <button class="generate-btn" id="genBtn" onclick="generateDiary('${dateKey}')">让${petName || '桌宠'}写日记</button>
+                        <div class="generating-hint" id="genHint">正在思考中，请稍候…</div>
+                    </div>
+                `;
+            }
+
+            detail.innerHTML = `
+                <div class="detail-header">
+                    <div class="detail-date">${dateLabel}</div>
+                    <div class="detail-weekday">${weekday}</div>
+                    <div class="stats-bar">${statTags.join('')}</div>
+                </div>
+                <div class="detail-body">${bodyHtml}</div>
+            `;
+        }
+
+        async function generateDiary(dateKey) {
+            const btn = document.querySelector('.generate-btn');
+            const hint = document.getElementById('genHint');
+
+            if (btn) { btn.disabled = true; btn.textContent = '生成中…'; }
+            if (hint) hint.classList.add('show');
+
+            try {
+                const result = await ipcRenderer.invoke('diary-generate', dateKey);
+                if (result.success) {
+                    await loadDiaryList();
+                    selectDay(dateKey);
+                } else {
+                    if (btn) { btn.disabled = false; btn.textContent = '重试'; }
+                    if (hint) { hint.textContent = result.error || '生成失败，请重试'; }
+                }
+            } catch (err) {
+                if (btn) { btn.disabled = false; btn.textContent = '重试'; }
+                if (hint) { hint.textContent = '生成出错了，请重试'; hint.classList.add('show'); }
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.getElementById('closeBtn').addEventListener('click', () => window.close());
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.close(); });
+    </script>
+</body>
+
+</html>

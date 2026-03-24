@@ -1,6 +1,7 @@
 const OpenAI = require('openai');
 const config = require('./config');
 const cs = require('./characterService');
+const diaryService = require('./diaryService');
 
 function getClient() {
     return new OpenAI({
@@ -104,9 +105,7 @@ function getCurrentPetSettings() {
 async function analyzeScreenshot(base64Image, userQuestion) {
     // 即使没有配置API Key，也返回默认响应
     try {
-        // 检查API Key配置
-        const apiKey = config.DASHSCOPE_API_KEY;
-        if (!apiKey || apiKey === "sk-xxx") {
+        if (!config.IS_AI_CONFIGURED) {
             console.log("API Key not configured, returning default response");
             return {
                 message: cs.getRandomFallback('screenshot'),
@@ -117,9 +116,6 @@ async function analyzeScreenshot(base64Image, userQuestion) {
                 }
             };
         }
-
-        console.log("Using API Key:", apiKey.substring(0, 10) + "...");
-        console.log("Base URL:", config.DASHSCOPE_BASE_URL);
 
         console.log("Sending request to AI service...");
         console.log("Model:", "qwen-vl-plus");
@@ -258,7 +254,7 @@ async function generateFunReminder(currentTime = new Date()) {
     // 即使没有配置API Key，也返回默认提醒
     try {
         // 如果没有配置API Key，则返回默认提醒
-        if (!config.DASHSCOPE_API_KEY || config.DASHSCOPE_API_KEY === "sk-xxx") {
+        if (!config.IS_AI_CONFIGURED) {
             console.log("API Key not configured, returning default reminder");
             return cs.getRandomFallback('reminder', { timeGreeting });
         }
@@ -302,7 +298,7 @@ async function generateWaterReminder() {
     // 即使没有配置API Key，也返回默认提醒
     try {
         // 如果没有配置API Key，则返回默认提醒
-        if (!config.DASHSCOPE_API_KEY || config.DASHSCOPE_API_KEY === "sk-xxx") {
+        if (!config.IS_AI_CONFIGURED) {
             console.log("API Key not configured, returning default water reminder");
             return cs.getRandomFallback('waterReminder');
         }
@@ -341,7 +337,7 @@ async function generateInactivityReminder() {
     // 即使没有配置API Key，也返回默认提醒
     try {
         // 如果没有配置API Key，则返回默认提醒
-        if (!config.DASHSCOPE_API_KEY || config.DASHSCOPE_API_KEY === "sk-xxx") {
+        if (!config.IS_AI_CONFIGURED) {
             console.log("API Key not configured, returning default inactivity reminder");
             return cs.getRandomFallback('inactivityReminder');
         }
@@ -389,7 +385,7 @@ async function chatWithPet(userMessage) {
     }
 
     try {
-        if (!config.DASHSCOPE_API_KEY || config.DASHSCOPE_API_KEY === "sk-xxx") {
+        if (!config.IS_AI_CONFIGURED) {
             console.log("API Key not configured, returning default chat response");
             const reply = cs.getRandomFallback('chat');
             chatHistory.push({ role: 'assistant', content: reply });
@@ -467,7 +463,7 @@ async function generateProactiveGreeting(context) {
     else if (dayOfWeek === 0 || dayOfWeek === 6) scenario += '（周末时光）';
 
     try {
-        if (!config.DASHSCOPE_API_KEY || config.DASHSCOPE_API_KEY === "sk-xxx" || config.DASHSCOPE_API_KEY === "your_zhipu_api_key_here") {
+        if (!config.IS_AI_CONFIGURED) {
             return _fallbackGreeting(petSettings, context);
         }
 
@@ -505,7 +501,7 @@ async function generateRandomThought() {
     const topic = cs.getRandomThoughtTopic();
 
     try {
-        if (!config.DASHSCOPE_API_KEY || config.DASHSCOPE_API_KEY === "sk-xxx" || config.DASHSCOPE_API_KEY === "your_zhipu_api_key_here") {
+        if (!config.IS_AI_CONFIGURED) {
             return _fallbackThought(petSettings);
         }
 
@@ -541,7 +537,7 @@ async function generateMilestoneMessage(days) {
     const petSettings = getCurrentPetSettings();
 
     try {
-        if (!config.DASHSCOPE_API_KEY || config.DASHSCOPE_API_KEY === "sk-xxx" || config.DASHSCOPE_API_KEY === "your_zhipu_api_key_here") {
+        if (!config.IS_AI_CONFIGURED) {
             return { message: cs.renderMessage(cs.getCharacter().fallbacks.milestone, { days }), emotion: '给你花花' };
         }
 
@@ -625,16 +621,13 @@ async function generatePokeReaction(pokeCount) {
 
     let scenario = trigger.scenario;
     if (pokeCount > 1) {
-        const escalationExtra = cs.getPokeEscalation(pokeCount);
-        if (escalationExtra) {
-            scenario = `主人已经连续骚扰你${pokeCount}次了（这次是：${trigger.action}）${escalationExtra}`;
-        }
+        scenario = `主人已经连续骚扰你${pokeCount}次了（这次是：${trigger.action}）`;
     }
 
     console.log(`[Poke] Trigger: "${trigger.action}" | Scenario: ${scenario}`);
 
     try {
-        if (!config.DASHSCOPE_API_KEY || config.DASHSCOPE_API_KEY === "sk-xxx" || config.DASHSCOPE_API_KEY === "your_zhipu_api_key_here") {
+        if (!config.IS_AI_CONFIGURED) {
             return _fallbackPokeReaction(petSettings, pokeCount, trigger);
         }
 
@@ -677,6 +670,81 @@ function _fallbackPokeReaction(petSettings, pokeCount, trigger) {
     return cs.getPokeFallback(pokeCount, trigger);
 }
 
+/**
+ * 生成宠物心情日记
+ * @param {string} dateKey - 日期 YYYY-MM-DD
+ * @param {Object} stats - 当日互动统计
+ * @returns {Promise<string>} 日记正文
+ */
+async function generateDiary(dateKey, stats) {
+    const petSettings = getCurrentPetSettings();
+
+    const lines = [];
+    if (stats.pokeCount > 0) lines.push(`被主人戳了 ${stats.pokeCount} 次`);
+    if (stats.chatCount > 0) lines.push(`和主人聊了 ${stats.chatCount} 条消息`);
+    if (stats.screenshotCount > 0) lines.push(`帮主人分析了 ${stats.screenshotCount} 张截图`);
+    if (stats.todosAdded > 0) lines.push(`新增待办 ${stats.todosAdded} 个`);
+    if (stats.todosCompleted > 0) lines.push(`完成待办 ${stats.todosCompleted} 个`);
+    if (stats.waterReminders > 0) lines.push(`提醒主人喝水 ${stats.waterReminders} 次`);
+    if (stats.emotionChanges && stats.emotionChanges.length > 0) {
+        lines.push(`今天的表情变化：${stats.emotionChanges.join('、')}`);
+    }
+
+    let summary = lines.length > 0
+        ? `今日互动统计：\n${lines.map(l => `- ${l}`).join('\n')}`
+        : '今天没有太多互动，安安静静地陪着主人。';
+
+    const chatLogs = diaryService.getChatLogs(dateKey);
+    if (chatLogs.length > 0) {
+        const TYPE_LABEL = { chat: '聊天', poke: '戳一戳', screenshot: '截图', proactive: '碎碎念' };
+        const logLines = chatLogs.slice(-30).map(log => {
+            const label = TYPE_LABEL[log.type] || log.type;
+            if (log.user && log.pet) return `[${log.time} ${label}] 主人：${log.user} → 我：${log.pet}`;
+            if (log.pet) return `[${log.time} ${label}] 我：${log.pet}`;
+            return `[${log.time} ${label}] 主人：${log.user}`;
+        });
+        summary += `\n\n今日对话记录：\n${logLines.join('\n')}`;
+    }
+
+    try {
+        if (!config.IS_AI_CONFIGURED) {
+            return _fallbackDiary(petSettings, dateKey, stats);
+        }
+
+        const completion = await getClient().chat.completions.create({
+            model: config.AI_TEXT_MODEL,
+            messages: [
+                {
+                    role: 'system',
+                    content: cs.getPrompt('diary', {
+                        character: petSettings.petCharacter,
+                        date: dateKey,
+                        summary: summary
+                    })
+                },
+                { role: 'user', content: '写一篇今天的心情日记' }
+            ],
+            max_tokens: 500,
+            temperature: 0.9
+        });
+
+        return completion.choices[0].message.content.trim();
+    } catch (error) {
+        console.error('Error generating diary:', error);
+        return _fallbackDiary(petSettings, dateKey, stats);
+    }
+}
+
+function _fallbackDiary(petSettings, dateKey, stats) {
+    const parts = [`今天是${dateKey}。`];
+    if (stats.pokeCount > 0) parts.push(`被主人戳了${stats.pokeCount}次，虽然嘴上说着别戳了，但其实还挺开心的。`);
+    if (stats.chatCount > 0) parts.push(`和主人聊了${stats.chatCount}句话，每一句都想好好回应。`);
+    if (stats.waterReminders > 0) parts.push(`提醒主人喝了${stats.waterReminders}次水，希望主人身体健康。`);
+    if (parts.length === 1) parts.push('今天安安静静地陪着主人，有时候不说话也是一种陪伴。');
+    parts.push('期待明天也是美好的一天。');
+    return parts.join('');
+}
+
 module.exports = {
     analyzeScreenshot,
     generateFunReminder,
@@ -689,5 +757,6 @@ module.exports = {
     generateProactiveGreeting,
     generateRandomThought,
     generateMilestoneMessage,
-    generatePokeReaction
+    generatePokeReaction,
+    generateDiary
 };

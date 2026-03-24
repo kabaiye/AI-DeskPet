@@ -58,7 +58,7 @@
 
   "assets": {
     "_说明": "角色的图片和动画资源。baseDir 为素材文件夹名（位于 src/assets/imgs/ 下），emotions 为表情名到GIF文件名的映射。",
-    "baseDir": "罗小黑的生活",
+    "baseDir": "罗小黑",
     "defaultImage": "pet.gif",
     "_defaultImage": "默认/待机状态显示的图片",
     "idleNightImage": "困死了.gif",

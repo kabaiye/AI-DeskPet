@@ -171,6 +171,94 @@
             line-height: 1.5;
         }
 
+        /* ====== 模型设置入口 ====== */
+        .model-entry {
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 14px;
+            margin-bottom: 14px;
+            border: 1.5px solid rgba(74,108,247,0.06);
+            box-shadow: 0 3px 14px rgba(74,108,247,0.07);
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .model-entry:hover { background: white; border-color: rgba(74,108,247,0.15); }
+        .model-entry-left { display: flex; align-items: center; gap: 12px; }
+        .model-entry-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: linear-gradient(135deg, #4a6cf7, #6b8cff);
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 16px; flex-shrink: 0;
+        }
+        .model-entry-title { font-size: 14px; font-weight: 600; color: #2c5aa0; }
+        .model-entry-desc { font-size: 11px; color: #8a9fba; margin-top: 2px; }
+        .model-entry-arrow { font-size: 20px; color: #8a9fba; }
+        .model-entry-unconfigured .model-entry-desc { color: #f56565; }
+
+        /* ====== 模型设置浮层 ====== */
+        .model-overlay {
+            display: none; position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #e8f4f8 0%, #f0f8ff 50%, #e6f7ff 100%);
+            z-index: 50; flex-direction: column; border-radius: 10px;
+            -webkit-app-region: no-drag;
+        }
+        .model-overlay.show { display: flex; }
+        .model-ol-header {
+            background: linear-gradient(135deg, #4a6cf7 0%, #6b8cff 100%);
+            color: white; padding: 14px 20px;
+            display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+        }
+        .model-back-btn {
+            background: rgba(255,255,255,0.2); border: none; color: white;
+            font-size: 13px; padding: 5px 12px; border-radius: 8px;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .model-back-btn:hover { background: rgba(255,255,255,0.3); }
+        .model-ol-header h2 { font-size: 17px; font-weight: 600; margin: 0; }
+        .model-ol-body { flex: 1; overflow-y: auto; padding: 16px; }
+        .provider-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px;
+        }
+        .provider-card {
+            background: rgba(255,255,255,0.9);
+            border: 1.5px solid rgba(74,108,247,0.08);
+            border-radius: 12px; padding: 10px 12px;
+            cursor: pointer; transition: all 0.2s; position: relative;
+        }
+        .provider-card:hover { border-color: rgba(74,108,247,0.2); background: white; }
+        .provider-card.selected {
+            border-color: #4a6cf7; background: rgba(74,108,247,0.04);
+            box-shadow: 0 0 0 3px rgba(74,108,247,0.08);
+        }
+        .provider-name { font-size: 12px; font-weight: 600; color: #2c5aa0; }
+        .provider-hint { font-size: 10px; color: #8a9fba; margin-top: 2px; }
+        .provider-badge {
+            position: absolute; top: 5px; right: 7px;
+            font-size: 9px; padding: 1px 5px; border-radius: 4px; font-weight: 600;
+        }
+        .provider-badge.free { background: rgba(72,187,120,0.12); color: #38a169; }
+        .model-form {
+            background: rgba(255,255,255,0.9); border-radius: 14px;
+            padding: 16px 18px; border: 1.5px solid rgba(74,108,247,0.06);
+        }
+        .model-form .form-group { margin-bottom: 14px; }
+        .model-form .form-group:last-child { margin-bottom: 0; }
+        .model-form select {
+            width: 100%; padding: 10px 30px 10px 13px;
+            border: 1.5px solid rgba(74,108,247,0.12); border-radius: 9px;
+            font-size: 13px; background: rgba(255,255,255,0.8); color: #2c5aa0;
+            transition: all 0.2s; appearance: none; -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234a6cf7' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 10px center;
+        }
+        .model-form select:focus { outline: none; border-color: #4a6cf7; box-shadow: 0 0 0 3px rgba(74,108,247,0.08); }
+        .model-ol-actions { display: flex; gap: 12px; padding: 0 16px 16px; flex-shrink: 0; }
+
         /* ====== 性格预设勾选 ====== */
         .preset-list { display: flex; flex-direction: column; gap: 10px; }
 
@@ -563,24 +651,21 @@
                 <button class="char-edit-btn" id="charEditBtn">编辑</button>
             </div>
 
-            <!-- API Key 设置 -->
-            <div class="section" id="apiSection">
-                <div class="section-header" onclick="toggleSection('apiSection')">
-                    <h3>API Key 设置</h3>
-                    <span class="section-arrow">▼</span>
-                </div>
-                <div class="section-body">
-                    <div class="section-inner">
-                        <div class="form-group">
-                            <label>智谱 AI API Key</label>
-                            <div class="api-row">
-                                <input type="password" id="apiKeyInput" placeholder="粘贴你的 API Key..." />
-                                <button class="link-btn" id="applyBtn">去申请</button>
-                            </div>
-                            <div class="api-hint">免费模型，注册即可使用。填写后即时生效，无需重启。</div>
-                        </div>
+            <!-- 模型设置入口 -->
+            <div class="model-entry" id="modelEntry">
+                <div class="model-entry-left">
+                    <div class="model-entry-icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2a4 4 0 0 1 4 4v2H8V6a4 4 0 0 1 4-4z"/><rect x="3" y="8" width="18" height="12" rx="3"/>
+                            <circle cx="9" cy="15" r="1.5" fill="white"/><circle cx="15" cy="15" r="1.5" fill="white"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="model-entry-title">模型设置</div>
+                        <div class="model-entry-desc" id="modelEntryDesc">加载中...</div>
                     </div>
                 </div>
+                <span class="model-entry-arrow">›</span>
             </div>
 
             <!-- 个性设置 -->
@@ -634,6 +719,16 @@
                 </div>
                 <div class="section-body">
                     <div class="section-inner">
+                        <div class="reminder-group">
+                            <div>
+                                <div class="reminder-label">开机自启</div>
+                                <div class="reminder-hint">开机时自动启动桌宠并恢复位置</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="autoLaunchToggle">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
                         <div class="reminder-group">
                             <div>
                                 <div class="reminder-label">勿扰模式</div>
@@ -692,6 +787,44 @@
         </div>
     </div>
 
+    <!-- 模型设置浮层 -->
+    <div class="model-overlay" id="modelOverlay">
+        <div class="model-ol-header">
+            <button class="model-back-btn" id="modelBackBtn">← 返回</button>
+            <h2>模型设置</h2>
+        </div>
+        <div class="model-ol-body">
+            <div class="provider-grid" id="providerGrid"></div>
+            <div class="model-form" id="modelForm" style="display:none">
+                <div class="form-group">
+                    <label>API Key</label>
+                    <div class="api-row">
+                        <input type="password" id="modelApiKey" placeholder="粘贴你的 API Key..." style="width:100%;padding:10px 13px;border:1.5px solid rgba(74,108,247,0.12);border-radius:9px;font-size:13px;background:rgba(255,255,255,0.8);color:#2c5aa0" />
+                        <button class="link-btn" id="modelKeyBtn" style="display:none">去申请</button>
+                    </div>
+                    <div class="api-hint" id="modelProviderHint"></div>
+                </div>
+                <div class="form-group">
+                    <label>文本模型</label>
+                    <select id="modelTextSelect"></select>
+                    <input type="text" id="modelTextCustom" placeholder="输入模型名称..." style="display:none;width:100%;padding:10px 13px;border:1.5px solid rgba(74,108,247,0.12);border-radius:9px;font-size:13px;background:rgba(255,255,255,0.8);color:#2c5aa0;margin-top:8px" />
+                </div>
+                <div class="form-group">
+                    <label>视觉模型 <span style="font-weight:400;font-size:11px;color:#8a9fba">（截图分析用）</span></label>
+                    <select id="modelVisionSelect"></select>
+                    <input type="text" id="modelVisionCustom" placeholder="输入模型名称..." style="display:none;width:100%;padding:10px 13px;border:1.5px solid rgba(74,108,247,0.12);border-radius:9px;font-size:13px;background:rgba(255,255,255,0.8);color:#2c5aa0;margin-top:8px" />
+                </div>
+                <div class="form-group">
+                    <label>API 地址 <span style="font-weight:400;font-size:11px;color:#8a9fba">（高级）</span></label>
+                    <input type="text" id="modelBaseUrl" placeholder="https://..." style="width:100%;padding:10px 13px;border:1.5px solid rgba(74,108,247,0.12);border-radius:9px;font-size:13px;background:rgba(255,255,255,0.8);color:#2c5aa0" />
+                </div>
+            </div>
+        </div>
+        <div class="model-ol-actions">
+            <button class="btn btn-primary" id="modelSaveBtn" style="flex:1;padding:11px 0;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#4a6cf7,#6b8cff);color:white;transition:all 0.2s">保存模型设置</button>
+        </div>
+    </div>
+
     <div class="confirm-overlay" id="confirmOverlay">
         <div class="confirm-box">
             <div class="title">切换角色</div>
@@ -706,7 +839,6 @@
     <script>
         const { ipcRenderer, shell } = require('electron');
 
-        const apiKeyInput = document.getElementById('apiKeyInput');
         const petNameInput = document.getElementById('petName');
         const petCharacterInput = document.getElementById('petCharacter');
         const toast = document.getElementById('toast');
@@ -1061,6 +1193,186 @@
             showToast('快捷键已重置为默认');
         });
 
+        // ====== 开机自启 ======
+        const autoLaunchToggle = document.getElementById('autoLaunchToggle');
+
+        async function loadAutoLaunch() {
+            try {
+                const enabled = await ipcRenderer.invoke('get-auto-launch');
+                autoLaunchToggle.checked = !!enabled;
+            } catch (_) {}
+        }
+
+        autoLaunchToggle.addEventListener('change', () => {
+            ipcRenderer.send('set-auto-launch', autoLaunchToggle.checked);
+            showToast(autoLaunchToggle.checked ? '已开启开机自启' : '已关闭开机自启');
+        });
+
+        // ====== 模型设置 ======
+        let aiProviders = {};
+        let selectedProvider = '';
+        let activeProvider = '';
+        let providerConfigs = {};
+
+        const modelOverlay = document.getElementById('modelOverlay');
+        const providerGrid = document.getElementById('providerGrid');
+        const modelForm = document.getElementById('modelForm');
+        const modelApiKey = document.getElementById('modelApiKey');
+        const modelKeyBtn = document.getElementById('modelKeyBtn');
+        const modelProviderHint = document.getElementById('modelProviderHint');
+        const modelTextSelect = document.getElementById('modelTextSelect');
+        const modelVisionSelect = document.getElementById('modelVisionSelect');
+        const modelTextCustom = document.getElementById('modelTextCustom');
+        const modelVisionCustom = document.getElementById('modelVisionCustom');
+        const modelBaseUrl = document.getElementById('modelBaseUrl');
+        const modelEntryDesc = document.getElementById('modelEntryDesc');
+
+        function syncCurrentForm() {
+            if (!selectedProvider) return;
+            providerConfigs[selectedProvider] = {
+                apiKey: modelApiKey.value.trim(),
+                baseUrl: modelBaseUrl.value.trim(),
+                textModel: getModelValue(modelTextSelect, modelTextCustom),
+                visionModel: getModelValue(modelVisionSelect, modelVisionCustom)
+            };
+        }
+
+        function buildProviderGrid() {
+            providerGrid.innerHTML = '';
+            Object.entries(aiProviders).forEach(([id, p]) => {
+                const card = document.createElement('div');
+                card.className = 'provider-card' + (id === selectedProvider ? ' selected' : '');
+                card.dataset.id = id;
+                const hasCfg = providerConfigs[id] && providerConfigs[id].apiKey;
+                card.innerHTML = `<div class="provider-name">${p.name}</div><div class="provider-hint">${p.hint}</div>`
+                    + (p.free ? '<div class="provider-badge free">免费</div>' : '')
+                    + (hasCfg ? '<div class="provider-badge" style="background:rgba(74,108,247,0.1);color:#4a6cf7;top:auto;bottom:5px">已配置</div>' : '');
+                card.addEventListener('click', () => {
+                    syncCurrentForm();
+                    selectProvider(id);
+                });
+                providerGrid.appendChild(card);
+            });
+        }
+
+        function selectProvider(id) {
+            selectedProvider = id;
+            providerGrid.querySelectorAll('.provider-card').forEach(c => {
+                c.classList.toggle('selected', c.dataset.id === id);
+            });
+            const p = aiProviders[id];
+            if (!p) return;
+
+            modelForm.style.display = '';
+            const cfg = providerConfigs[id] || {};
+
+            modelApiKey.value = cfg.apiKey || '';
+            modelBaseUrl.value = cfg.baseUrl || p.baseUrl;
+            modelProviderHint.textContent = p.hint + '。填写后即时生效，无需重启。';
+
+            if (p.keyUrl) {
+                modelKeyBtn.style.display = '';
+                modelKeyBtn.onclick = () => shell.openExternal(p.keyUrl);
+            } else {
+                modelKeyBtn.style.display = 'none';
+            }
+
+            fillModelSelect(modelTextSelect, p.textModels, p.defaultText, modelTextCustom, cfg.textModel);
+            fillModelSelect(modelVisionSelect, p.visionModels, p.defaultVision, modelVisionCustom, cfg.visionModel);
+        }
+
+        function fillModelSelect(sel, models, defaultModel, customInput, savedValue) {
+            sel.innerHTML = '';
+            if (models.length === 0 && selectedProvider !== 'custom') {
+                const opt = document.createElement('option');
+                opt.value = ''; opt.textContent = '（该提供商暂无此类模型）';
+                sel.appendChild(opt);
+                sel.disabled = true;
+                customInput.style.display = 'none';
+                return;
+            }
+            sel.disabled = false;
+            models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m; opt.textContent = m;
+                sel.appendChild(opt);
+            });
+            const customOpt = document.createElement('option');
+            customOpt.value = '__custom__'; customOpt.textContent = '自定义...';
+            sel.appendChild(customOpt);
+
+            if (savedValue && models.includes(savedValue)) {
+                sel.value = savedValue;
+                customInput.style.display = 'none';
+            } else if (savedValue) {
+                sel.value = '__custom__';
+                customInput.style.display = '';
+                customInput.value = savedValue;
+            } else if (selectedProvider === 'custom') {
+                sel.value = '__custom__';
+                customInput.style.display = '';
+                customInput.value = '';
+            } else {
+                sel.value = defaultModel || models[0] || '';
+                customInput.style.display = 'none';
+            }
+
+            sel.onchange = () => {
+                customInput.style.display = sel.value === '__custom__' ? '' : 'none';
+            };
+        }
+
+        function getModelValue(sel, customInput) {
+            return sel.value === '__custom__' ? customInput.value.trim() : sel.value;
+        }
+
+        function updateModelEntryDesc() {
+            const p = aiProviders[activeProvider];
+            const cfg = providerConfigs[activeProvider] || {};
+            if (p && cfg.apiKey) {
+                const model = cfg.textModel || p.defaultText;
+                modelEntryDesc.textContent = `${p.name} · ${model}`;
+                document.getElementById('modelEntry').classList.remove('model-entry-unconfigured');
+            } else {
+                modelEntryDesc.textContent = '未配置，点击设置';
+                document.getElementById('modelEntry').classList.add('model-entry-unconfigured');
+            }
+        }
+
+        document.getElementById('modelEntry').addEventListener('click', () => {
+            modelOverlay.classList.add('show');
+            if (selectedProvider) selectProvider(selectedProvider);
+        });
+
+        document.getElementById('modelBackBtn').addEventListener('click', () => {
+            syncCurrentForm();
+            modelOverlay.classList.remove('show');
+        });
+
+        document.getElementById('modelSaveBtn').addEventListener('click', () => {
+            syncCurrentForm();
+            activeProvider = selectedProvider;
+            ipcRenderer.send('save-settings', {
+                activeProvider: activeProvider,
+                providerConfigs: providerConfigs
+            });
+            updateModelEntryDesc();
+            buildProviderGrid();
+            modelOverlay.classList.remove('show');
+            showToast('模型设置已保存');
+        });
+
+        async function loadModelSettings() {
+            aiProviders = await ipcRenderer.invoke('get-ai-providers');
+            const s = await ipcRenderer.invoke('load-settings');
+            activeProvider = s.activeProvider || Object.keys(aiProviders)[0];
+            providerConfigs = s.providerConfigs || {};
+            selectedProvider = activeProvider;
+            buildProviderGrid();
+            selectProvider(selectedProvider);
+            updateModelEntryDesc();
+        }
+
         // ====== 加载 & 保存 ======
         const dndToggle = document.getElementById('dndToggle');
         const sedentaryInput = document.getElementById('sedentaryInput');
@@ -1071,25 +1383,22 @@
             await loadCharacterList();
             await loadShortcuts();
             await loadTransparency();
+            await loadAutoLaunch();
+            await loadModelSettings();
 
             petNameInput.value = DEFAULT_NAME;
             petCharacterInput.value = DEFAULT_CHARACTER;
 
             const s = await ipcRenderer.invoke('load-settings');
             if (s) {
-                apiKeyInput.value = s.apiKey || '';
                 dndToggle.checked = !!s.doNotDisturb;
                 sedentaryInput.value = s.sedentaryMinutes ?? 52;
                 waterInput.value = s.waterMinutes ?? 60;
-                if (!s.apiKey) {
-                    document.getElementById('apiSection').classList.add('open');
-                }
             }
         }
 
         function collectSettings() {
             return {
-                apiKey: apiKeyInput.value.trim(),
                 doNotDisturb: dndToggle.checked,
                 sedentaryMinutes: Math.max(0, parseInt(sedentaryInput.value) || 0),
                 waterMinutes: Math.max(0, parseInt(waterInput.value) || 0)
@@ -1109,10 +1418,6 @@
             });
             saveShortcuts();
             showToast('设置已保存！');
-        });
-
-        document.getElementById('applyBtn').addEventListener('click', () => {
-            shell.openExternal('https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys');
         });
 
         document.getElementById('closeBtn').addEventListener('click', () => window.close());
